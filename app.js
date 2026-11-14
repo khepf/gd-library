@@ -557,6 +557,7 @@
 
   function play() {
     if (!player.tracks.length) return;
+    initMeter(); // needs a user gesture, which every play() call comes from
     audio.play().catch((e) => { if (e.name !== "AbortError") lcd(undefined, undefined, "TAPE JAMMED"); });
   }
   function pause() { audio.pause(); }
@@ -603,6 +604,59 @@
     $("#kPlay").classList.toggle("down", playing);
     $("#kPause").classList.toggle("down", !playing && audio.currentTime > 0);
     if ("mediaSession" in navigator) navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+    if (playing && meter.analyser) {
+      if (actx.state === "suspended") actx.resume(); // audio is routed through actx, so it must be running
+      if (!meter.raf) meter.raf = requestAnimationFrame(drawMeter);
+    }
+  }
+
+  // ---------------------------------------------------------
+  // level meter: real levels from the stream via an AnalyserNode.
+  // archive.org sends CORS headers, so the <audio> element is crossorigin and can be
+  // routed through Web Audio. Skipped on iOS (routing <audio> through Web Audio stops
+  // playback when the screen locks) and for reduced motion; there, or without Web Audio,
+  // the CSS animation in styles.css runs instead.
+  // ---------------------------------------------------------
+  const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const bars = [...document.querySelectorAll(".window-glass i")];
+  const meter = { analyser: null, gain: null, data: null, bands: [], raf: 0 };
+
+  function initMeter() {
+    if (meter.analyser || IOS || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = actx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.7;
+      analyser.minDecibels = -85;
+      analyser.maxDecibels = -20;
+      const gain = actx.createGain();
+      gain.gain.value = audio.volume;
+      actx.createMediaElementSource(audio).connect(analyser).connect(gain).connect(actx.destination);
+      audio.volume = 1; // volume now lives on the gain node, after the meter (like a deck's record level)
+      meter.analyser = analyser;
+      meter.gain = gain;
+      meter.data = new Uint8Array(analyser.frequencyBinCount);
+      // log-spaced bands from 60 Hz to 11 kHz, so bass and treble each get bars
+      const hz = actx.sampleRate / analyser.fftSize;
+      const edge = (b) => Math.max(1, Math.round((60 * Math.pow(11000 / 60, b / bars.length)) / hz));
+      meter.bands = bars.map((_, b) => [edge(b), Math.max(edge(b) + 1, edge(b + 1))]);
+      $(".window-glass").classList.add("live");
+    } catch { /* no Web Audio: the CSS animation stays */ }
+  }
+
+  function drawMeter() {
+    meter.raf = 0;
+    const playing = !audio.paused && !audio.ended;
+    if (!playing) { bars.forEach((bar) => { bar.style.transform = ""; }); return; } // rest height from CSS
+    meter.analyser.getByteFrequencyData(meter.data);
+    meter.bands.forEach(([lo, hi], b) => {
+      let peak = 0;
+      for (let k = lo; k < hi; k++) peak = Math.max(peak, meter.data[k]);
+      const tilt = 1 + 0.1 * b; // treble carries less energy; lift it so the right-hand bars still dance
+      bars[b].style.transform = `scaleY(${Math.min(1, Math.max(0.06, (peak / 255) * tilt)).toFixed(3)})`;
+    });
+    meter.raf = requestAnimationFrame(drawMeter);
   }
 
   let seeking = false;
@@ -614,7 +668,11 @@
     if (!seeking && dur) $("#seek").value = Math.round((audio.currentTime / dur) * 1000);
     if (player.total) setReels(Math.min(1, (player.offsets[player.index] + audio.currentTime) / player.total));
   });
-  audio.addEventListener("play", updateTransport);
+  audio.addEventListener("play", () => {
+    const t = player.tracks[player.index];
+    if (t) lcd(undefined, undefined, t.title.toUpperCase()); // replaces "PRESS PLAY ▶" and other prompts
+    updateTransport();
+  });
   audio.addEventListener("pause", updateTransport);
   audio.addEventListener("ended", () => {
     if (player.index < player.tracks.length - 1) loadTrack(player.index + 1, true);
@@ -643,7 +701,10 @@
   });
   const vol = $("#volume");
   audio.volume = vol.value / 100;
-  vol.addEventListener("input", () => { audio.volume = vol.value / 100; });
+  vol.addEventListener("input", () => {
+    if (meter.gain) meter.gain.gain.value = vol.value / 100;
+    else audio.volume = vol.value / 100;
+  });
 
   $("#sourceSelect").addEventListener("change", (e) => {
     const [, artist, year, date] = location.hash.split("/");
