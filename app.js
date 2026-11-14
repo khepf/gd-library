@@ -1,5 +1,5 @@
 /* =========================================================
-   The Tape Vault — Grateful Dead & Jerry Garcia live shows from archive.org
+   Jerry Tapes (jerrytapes.net) — Grateful Dead & Jerry Garcia live shows from archive.org
    No build step, no dependencies. Open index.html or serve the folder.
    ========================================================= */
 (() => {

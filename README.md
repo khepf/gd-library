@@ -1,4 +1,4 @@
-# The Tape Vault
+# Jerry Tapes
 
 A wall of cardboard boxes, one per year, holding live Grateful Dead (1965–1995) and Jerry Garcia (1970–1995) shows streamed from the [Internet Archive](https://archive.org).
 

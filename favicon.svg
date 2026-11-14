@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Jerry Tapes favicon: a cassette in the title's gold with its red drop shadow -->
+  <rect x="3" y="7" width="28" height="20" rx="3" fill="#b5361d"/>
+  <rect x="1" y="5" width="28" height="20" rx="3" fill="#ffd86b"/>
+  <rect x="5" y="9" width="20" height="9" rx="4.5" fill="#1d1712"/>
+  <circle cx="10" cy="13.5" r="3" fill="#f6efda"/>
+  <circle cx="20" cy="13.5" r="3" fill="#f6efda"/>
+  <circle cx="10" cy="13.5" r="1.2" fill="#1d1712"/>
+  <circle cx="20" cy="13.5" r="1.2" fill="#1d1712"/>
+  <path d="M8 25 L10 20.5 H20 L22 25 Z" fill="#b5361d"/>
+</svg>

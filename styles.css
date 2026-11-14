@@ -1,5 +1,5 @@
 /* =========================================================
-   The Tape Vault — styles
+   Jerry Tapes — styles
    ========================================================= */
 :root {
   --kraft: #c89a5f;
@@ -43,6 +43,14 @@ button { font: inherit; cursor: pointer; }
   color: #ffd86b;
   text-shadow: 3px 3px 0 #b5361d, 6px 6px 0 rgba(0,0,0,.35);
   letter-spacing: 2px;
+}
+/* ".net": small and raised so its top lines up with the top of "Jerry Tapes" */
+.wall-header h1 .tld {
+  font-size: .42em;
+  vertical-align: .95em;
+  margin-left: .3em; /* clear of the "s" so the dot shows */
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0 #b5361d, 3px 3px 0 rgba(0,0,0,.35);
 }
 .wall-header p { margin: 4px 0 0; opacity: .85; }
 .artist-switch {
