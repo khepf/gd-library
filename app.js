@@ -44,7 +44,6 @@
 
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
   const SPINE_COLORS = ["#e4572e", "#f2b134", "#2e86ab", "#3a9e5c", "#8e44ad", "#c0392b", "#d35400", "#16a085", "#2c3e50", "#b03a7a"];
-  const STICKER_COLORS = ["#d8402c", "#f2b134", "#2e86ab", "#3a9e5c", "#8e44ad"];
 
   const $ = (sel) => document.querySelector(sel);
   const el = (tag, cls, text) => {
@@ -276,7 +275,6 @@
         const r = hash(artist + "box" + y);
         const b = el("button", "box");
         b.style.setProperty("--tilt", `${(r - 0.5) * 5}deg`);
-        b.style.setProperty("--sticker", STICKER_COLORS[Math.floor(r * 97) % STICKER_COLORS.length]);
         b.setAttribute("aria-label", `Open the ${a.name} ${y} box`);
         b.append(el("div", "lid"), el("div", "side"));
         const front = el("div", "front");
@@ -285,7 +283,6 @@
         const count = el("div", "count", n == null ? "counting…" : countLabel(n));
         count.id = `count-${artist}-${y}`;
         front.append(count);
-        if (r > 0.55) front.append(el("div", "sticker"));
         b.append(front);
         b.addEventListener("click", () => { location.hash = `#/${artist}/${y}`; });
         shelf.append(b);
