@@ -86,7 +86,7 @@
       const key = cacheKey(artist, year);
       try {
         const cached = JSON.parse(localStorage.getItem(key) || "null");
-        // re-sort: caches written by older versions were ordered by plays, not rating
+        // re-sort: caches written by older versions may be in a different order
         if (cached && Date.now() - cached.t < CACHE_TTL_MS) return sortRecordings(cached.shows);
       } catch { /* ignore bad cache */ }
 
@@ -170,10 +170,10 @@
     return shows;
   }
 
-  // highest-rated recording first; plays break ties (and order the unrated ones)
+  // most-played recording first; rating breaks ties
   function sortRecordings(shows) {
     for (const s of shows) {
-      s.recordings.sort((a, b) => (b.rating || 0) - (a.rating || 0) || b.downloads - a.downloads);
+      s.recordings.sort((a, b) => b.downloads - a.downloads || (b.rating || 0) - (a.rating || 0));
     }
     return shows;
   }
@@ -392,7 +392,7 @@
     const year = boxState.year, artist = boxState.artist;
     let shown = 0, i = 0;
 
-    // one cassette per show, showing its highest-rated recording; the others are in the player's dropdown
+    // one cassette per show, showing its most-played recording; the others are in the player's dropdown
     for (const show of boxState.shows) {
       const color = SPINE_COLORS[Math.floor(hash(show.date) * 1000) % SPINE_COLORS.length];
       const venue = [show.venue, show.location].filter(Boolean).join(" · ") || "Unknown venue";
@@ -521,7 +521,7 @@
     show.recordings.forEach((r, i) => {
       const proj = r.project ? `${r.project.tag} · ` : "";
       const rating = r.rating ? `★ ${r.rating.toFixed(1)} · ` : "";
-      const o = el("option", null, `${proj}${r.type}${i === 0 ? " (top rated)" : ""} — ${r.id} (${rating}${r.downloads.toLocaleString()} plays)`);
+      const o = el("option", null, `${proj}${r.type}${i === 0 ? " (most played)" : ""} — ${r.id} (${rating}${r.downloads.toLocaleString()} plays)`);
       o.value = r.id;
       o.title = o.textContent;
       sel.append(o);
