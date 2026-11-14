@@ -337,7 +337,16 @@ button { font: inherit; cursor: pointer; }
 @keyframes marquee { to { transform: translateX(-100%); } }
 
 .deck-middle { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; margin: 16px 0; }
-@media (max-width: 760px) { .deck-middle { grid-template-columns: 1fr; } }
+/* stacked layout: cassette, then the keys and sliders, then the J-card track list.
+   .deck-middle steps aside (display: contents) so its children can be ordered alongside .deck-bottom. */
+@media (max-width: 760px) {
+  .deck { display: flex; flex-direction: column; gap: 14px; }
+  .deck-top, .door, .deck-bottom, .jcard { flex-shrink: 0; } /* the deck scrolls; nothing gets squashed */
+  .deck-middle { display: contents; }
+  .door { order: 1; }
+  .deck-bottom { order: 2; }
+  .jcard { order: 3; }
+}
 
 /* cassette door */
 .door {
