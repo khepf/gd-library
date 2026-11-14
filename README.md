@@ -32,3 +32,7 @@ python -m http.server 8000     # then open http://localhost:8000
 - Track list: `https://archive.org/metadata/<identifier>`. The app uses the VBR MP3 files, sorted by track number.
 - Audio: streamed from `https://archive.org/download/<identifier>/<file>`.
 - URLs are shareable: `#/jg` shows the Garcia wall, `#/gd/1977` opens a box and `#/gd/1977/1977-05-08` loads a tape. Old links like `#/1977` still work.
+
+## Analytics
+
+Google Tag Manager (container `GTM-559GRVHW`) is loaded in `index.html`. The app is a single page that changes views using the URL after `#`, so on every view change it pushes a `virtual_page_view` event to the `dataLayer`. The event carries `page_path` (e.g. `/gd/1977/1977-05-08`), `page_location`, `page_title`, `artist`, `year` and `show_date`. In GTM, a GA4 Event tag named `page_view` fires on that custom event, and the Google tag has `send_page_view` set to `false` so the first page isn't counted twice.

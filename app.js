@@ -688,6 +688,24 @@
   });
 
   // ---------------------------------------------------------
+  // ANALYTICS — tell Google Tag Manager about each view, as a readable path like /gd/1977.
+  // GTM listens for the "virtual_page_view" event (see README). Nothing happens if GTM isn't loaded.
+  // ---------------------------------------------------------
+  let lastTrackedPath = null;
+  function trackView(path, title, extra) {
+    if (path === lastTrackedPath) return; // e.g. switching versions of the same show
+    lastTrackedPath = path;
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: "virtual_page_view",
+      page_path: path,
+      page_location: location.origin + path,
+      page_title: title,
+      ...extra,
+    });
+  }
+
+  // ---------------------------------------------------------
   // ROUTER   #/gd                            wall (gd = Grateful Dead, jg = Jerry Garcia)
   //          #/gd/1977                       box
   //          #/gd/1977/1977-05-08[/identifier]   player
@@ -717,6 +735,7 @@
       $("#boxview").classList.add("hidden");
       $("#wall").classList.remove("hidden");
       renderWall(artist);
+      trackView(`/${artist}`, `${a.name} — all years`, { artist: a.name });
       return;
     }
 
@@ -724,11 +743,14 @@
     $("#boxview").classList.remove("hidden");
     await openBox(artist, year);
 
-    if (date) {
-      const show = boxState.shows.find((s) => s.date === date);
-      if (show) openPlayer(artist, show, recId && decodeURIComponent(recId));
-    } else if (!$("#player").classList.contains("hidden")) {
-      closePlayer();
+    const show = date && boxState.shows.find((s) => s.date === date);
+    if (show) {
+      openPlayer(artist, show, recId && decodeURIComponent(recId));
+      trackView(`/${artist}/${year}/${date}`, `${a.name} · ${date}${show.venue ? ` · ${show.venue}` : ""}`,
+        { artist: a.name, year: String(year), show_date: date });
+    } else {
+      if (!date && !$("#player").classList.contains("hidden")) closePlayer();
+      trackView(`/${artist}/${year}`, `${a.name} · ${year}`, { artist: a.name, year: String(year) });
     }
   }
 
