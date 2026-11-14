@@ -187,9 +187,9 @@
 
   function pickTracks(identifier, files) {
     const prefs = ["VBR MP3", "MP3", "128Kbps MP3", "64Kbps MP3", "Ogg Vorbis"];
-    let chosen = [];
-    for (const fmt of prefs) {
-      chosen = files.filter((f) => f.format === fmt);
+    let chosen = [], format;
+    for (format of prefs) {
+      chosen = files.filter((f) => f.format === format);
       if (chosen.length) break;
     }
     const natural = new Intl.Collator(undefined, { numeric: true });
@@ -201,6 +201,8 @@
     return chosen.map((f) => ({
       title: (f.title || f.name.replace(/\.[^.]+$/, "")).trim(),
       duration: parseLength(f.length),
+      size: parseInt(f.size, 10) || 0,
+      mp3: format !== "Ogg Vorbis",
       url: `https://archive.org/download/${encodeURIComponent(identifier)}/${f.name.split("/").map(encodeURIComponent).join("/")}`,
     }));
   }
@@ -451,7 +453,45 @@
     total: 0,
     index: 0,
     loadToken: 0,
+    gapless: false, // this tape streams through `gapless` (see gapless.js) rather than one file at a time
   };
+  const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  // Gapless playback: the whole show goes through one MediaSource, so there's no pause between songs.
+  // Not on iOS (Safari's MediaSource there isn't proven with lock-screen playback) or where MP3 MediaSource
+  // isn't supported; those, and Ogg-only tapes, play one file at a time like before.
+  const gapless = window.GaplessStream && GaplessStream.supported() && !IOS ? new GaplessStream(audio) : null;
+  if (gapless) {
+    gapless.onfail = (_err, started) => {
+      if (!player.gapless) return;
+      if (!started) { // never got going (odd file?): fall back to one file at a time for this tape
+        const wasPlaying = !audio.paused;
+        gapless.unload();
+        player.gapless = false;
+        loadTrack(player.index, wasPlaying);
+      } else {
+        lcd(undefined, undefined, "TAPE JAMMED — TRY ANOTHER SOURCE");
+      }
+    };
+  }
+
+  // where the tape is: the current song's index and the time within it
+  function position() {
+    return player.gapless ? gapless.position() : { i: player.index, t: audio.currentTime };
+  }
+  function seekTo(t) {
+    if (player.gapless) gapless.seek(player.index, t);
+    else audio.currentTime = t;
+  }
+  // highlight song i on the J-card and show it on the LCD
+  function showTrack(i) {
+    const t = player.tracks[i];
+    document.querySelectorAll("#trackList li").forEach((li, n) => li.classList.toggle("current", n === i));
+    const cur = document.querySelectorAll("#trackList li")[i];
+    if (cur) cur.scrollIntoView({ block: "nearest" });
+    lcd(`TRK ${String(i + 1).padStart(2, "0")}/${String(player.tracks.length).padStart(2, "0")}`, undefined, t.title.toUpperCase());
+    updateMediaSession();
+  }
 
   async function openPlayer(artist, show, recId) {
     $("#player").classList.remove("hidden");
@@ -494,6 +534,8 @@
       let acc = 0;
       for (const t of tracks) { player.offsets.push(acc); acc += t.duration; }
       player.total = acc;
+      player.gapless = !!gapless && tracks.every((t) => t.mp3);
+      if (player.gapless) gapless.load(tracks);
       renderTrackList();
       $("#cassette").classList.remove("empty");
       loadTrack(0, false);
@@ -543,14 +585,13 @@
     if (!player.tracks.length) return;
     i = Math.max(0, Math.min(i, player.tracks.length - 1));
     player.index = i;
-    const t = player.tracks[i];
-    audio.src = t.url;
-    audio.load();
-    document.querySelectorAll("#trackList li").forEach((li, n) => li.classList.toggle("current", n === i));
-    const cur = document.querySelectorAll("#trackList li")[i];
-    if (cur) cur.scrollIntoView({ block: "nearest" });
-    lcd(`TRK ${String(i + 1).padStart(2, "0")}/${String(player.tracks.length).padStart(2, "0")}`, "00:00", t.title.toUpperCase());
-    updateMediaSession();
+    if (player.gapless) gapless.cue(i);
+    else {
+      audio.src = player.tracks[i].url;
+      audio.load();
+    }
+    showTrack(i);
+    lcd(undefined, "00:00");
     if (autoplay) play();
     else updateTransport();
   }
@@ -563,8 +604,13 @@
   function pause() { audio.pause(); }
   function stopAudio(silent) {
     audio.pause();
-    if (!silent && player.tracks.length) { audio.currentTime = 0; }
-    if (silent) { audio.removeAttribute("src"); audio.load(); }
+    if (!silent && player.tracks.length) seekTo(0);
+    if (silent) {
+      if (gapless) gapless.unload();
+      player.gapless = false;
+      audio.removeAttribute("src");
+      audio.load();
+    }
     updateTransport();
   }
   function next() {
@@ -572,7 +618,7 @@
   }
   function prev() {
     // standard deck behaviour: if we're a few seconds in, rewind to the top of the song first
-    if (audio.currentTime > 4) { audio.currentTime = 0; return; }
+    if (position().t > 4) { seekTo(0); return; }
     loadTrack(player.index - 1, !audio.paused);
   }
 
@@ -617,7 +663,6 @@
   // playback when the screen locks) and for reduced motion; there, or without Web Audio,
   // the CSS animation in styles.css runs instead.
   // ---------------------------------------------------------
-  const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const bars = [...document.querySelectorAll(".window-glass i")];
   const meter = { analyser: null, gain: null, data: null, bands: [], raf: 0 };
 
@@ -661,12 +706,22 @@
 
   let seeking = false;
   audio.addEventListener("timeupdate", () => {
-    const t = player.tracks[player.index];
+    if (!player.tracks.length) return;
+    const pos = position();
+    if (pos.i !== player.index) { // gapless: the tape rolled on into the next song
+      player.index = pos.i;
+      showTrack(pos.i);
+    }
+    const t = player.tracks[pos.i];
     if (!t) return;
-    const dur = isFinite(audio.duration) ? audio.duration : t.duration;
-    lcd(undefined, fmtTime(audio.currentTime));
-    if (!seeking && dur) $("#seek").value = Math.round((audio.currentTime / dur) * 1000);
-    if (player.total) setReels(Math.min(1, (player.offsets[player.index] + audio.currentTime) / player.total));
+    const dur = !player.gapless && isFinite(audio.duration) ? audio.duration : t.duration;
+    lcd(undefined, fmtTime(pos.t));
+    if (!seeking && dur) $("#seek").value = Math.round(Math.min(1, pos.t / dur) * 1000);
+    if (player.total) setReels(Math.min(1, (player.offsets[pos.i] + pos.t) / player.total));
+    // lock screen / media overlay: the song's own length (a gapless tape's element spans the whole show)
+    if (player.gapless && dur && "mediaSession" in navigator && navigator.mediaSession.setPositionState) {
+      try { navigator.mediaSession.setPositionState({ duration: dur, position: Math.min(pos.t, dur), playbackRate: audio.playbackRate }); } catch { /* ignore */ }
+    }
   });
   audio.addEventListener("play", () => {
     const t = player.tracks[player.index];
@@ -675,7 +730,8 @@
   });
   audio.addEventListener("pause", updateTransport);
   audio.addEventListener("ended", () => {
-    if (player.index < player.tracks.length - 1) loadTrack(player.index + 1, true);
+    // gapless tapes only end after the last song; one-file-at-a-time tapes load the next song here
+    if (!player.gapless && player.index < player.tracks.length - 1) loadTrack(player.index + 1, true);
     else { updateTransport(); lcd(undefined, undefined, "END OF TAPE — FLIP IT OVER, MAN"); }
   });
   audio.addEventListener("error", () => {
@@ -695,8 +751,8 @@
   seek.addEventListener("input", () => { seeking = true; });
   seek.addEventListener("change", () => {
     const t = player.tracks[player.index];
-    const dur = isFinite(audio.duration) ? audio.duration : t && t.duration;
-    if (dur) audio.currentTime = (seek.value / 1000) * dur;
+    const dur = !player.gapless && isFinite(audio.duration) ? audio.duration : t && t.duration;
+    if (dur) seekTo((seek.value / 1000) * dur);
     seeking = false;
   });
   const vol = $("#volume");

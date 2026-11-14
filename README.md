@@ -31,6 +31,7 @@ python -m http.server 8000     # then open http://localhost:8000
   - Recordings are grouped by date into shows, and results are cached in `localStorage` for 24 hours.
 - Track list: `https://archive.org/metadata/<identifier>`. The app uses the VBR MP3 files, sorted by track number.
 - Audio: streamed from `https://archive.org/download/<identifier>/<file>`.
+- Gapless playback (`gapless.js`): songs run straight into each other with no pause, so segues like Scarlet > Fire play as on the tape. The whole show is fed into one `<audio>` element through Media Source Extensions: each MP3 is fetched in byte ranges about a minute ahead of the playhead, cut on frame boundaries and appended back to back. The encoder's silent padding at the start and end of each file (from its LAME header) is trimmed off, so songs join sample for sample. On iOS, in browsers without MP3 support in Media Source Extensions, and for recordings that only have Ogg files, the player falls back to playing one file at a time, with a short pause between songs.
 - URLs are shareable: `#/jg` shows the Garcia wall, `#/gd/1977` opens a box and `#/gd/1977/1977-05-08` loads a tape. Old links like `#/1977` still work.
 
 ## Analytics
