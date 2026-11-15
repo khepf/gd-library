@@ -409,26 +409,28 @@ button { font: inherit; cursor: pointer; }
 .cass-window {
   /* don't stretch to the label's bottom edge: sit just under the stripe so the reels
      land at the shell's vertical centre (the spare label space goes below instead) */
+  /* --grow enlarges the black window evenly on every side without moving the reels;
+     it pulls the top edge up just over the red/yellow stripe */
+  --grow: 1.8cqw;
   flex: none;
-  height: calc(var(--reel) + 8px);
-  margin: 0 8% auto;
+  height: calc(var(--reel) + 8px + 2 * var(--grow));
+  margin: calc(-1 * var(--grow)) calc(8% - var(--grow)) auto;
   background: #1a1410;
   border-radius: 40px;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 4%;
+  padding: 0 calc(4% + var(--grow));
   position: relative;
-  min-height: calc(var(--reel) + 8px);
   box-shadow: inset 0 2px 6px rgba(0,0,0,.9);
   --reel: clamp(52px, 20cqw, 92px);
 }
 .window-glass {
-  position: absolute; left: 33%; right: 33%; top: 22%; bottom: 22%;
+  position: absolute; left: 35.5%; right: 35.5%; top: 27%; bottom: 27%;
   background: rgba(20, 14, 10, .85);
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 3px;
   /* level meter: bars bounce while playing, rest low when stopped */
   display: flex; align-items: flex-end; justify-content: center;
-  gap: 6%; padding: 6% 10%;
+  gap: 4%; padding: 4px; /* fixed px: % padding would be measured off the whole window, not this box */
   overflow: hidden;
 }
 .window-glass i {
