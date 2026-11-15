@@ -373,7 +373,7 @@ button { font: inherit; cursor: pointer; }
   width: 100%; max-width: 440px; aspect-ratio: 1.6;
   background: linear-gradient(#3a3a3e, #26262a);
   border-radius: 10px;
-  padding: 6% 5% 0;
+  padding: 3% 5% 0;
   position: relative;
   box-shadow: 0 4px 10px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.15);
   display: flex; flex-direction: column;
@@ -383,23 +383,35 @@ button { font: inherit; cursor: pointer; }
 .cass-label {
   flex: 1;
   border-radius: 6px;
-  background:
-    linear-gradient(180deg, #f6efda 0 26%, #e8573a 26% 30%, #f2b134 30% 34%, #f6efda 34%);
-  padding: 4px 10px 8px;
+  background: #f6efda;
+  /* label text & spacing scale with the cassette (cqw), so the layout keeps the same
+     proportions at every size and the reels stay at the shell's vertical centre */
+  --label-px: 2.8cqw;
+  padding: 1.1cqw var(--label-px) 2.2cqw;
   display: flex; flex-direction: column;
   color: #1d1712;
 }
-.cass-label-top { display: flex; align-items: center; gap: 8px; }
+.cass-label-top { display: flex; align-items: center; gap: 2.2cqw; }
 .cass-label .side {
-  font-family: "Permanent Marker", cursive; font-size: 1.3rem;
+  font-family: "Permanent Marker", cursive; font-size: 6.4cqw;
   background: #1d1712; color: #f6efda; width: 1.6em; text-align: center; border-radius: 3px;
 }
-.cass-date { font-weight: 700; font-size: 1.15rem; flex: 1; }
-.cass-brand { font-family: "VT323", monospace; font-size: 1rem; }
-.cass-venue { font-size: .9rem; line-height: 1.1; min-height: 1.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 2px 0 6px; }
+.cass-date { font-weight: 700; font-size: 5.6cqw; flex: 1; }
+.cass-brand { font-family: "VT323", monospace; font-size: 4.8cqw; }
+.cass-venue {
+  font-size: 4.4cqw; line-height: 1.1; min-height: 1.1em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* stripe rides directly under the venue text, spanning the label's full width */
+  margin: .3cqw calc(-1 * var(--label-px)) .8cqw;
+  padding: 0 var(--label-px) 2.5cqw;
+  background: linear-gradient(to top, #f2b134 0 1.1cqw, #e8573a 1.1cqw 2.2cqw, transparent 2.2cqw);
+}
 .cass-window {
-  flex: 1;
-  margin: 0 8%;
+  /* don't stretch to the label's bottom edge: sit just under the stripe so the reels
+     land at the shell's vertical centre (the spare label space goes below instead) */
+  flex: none;
+  height: calc(var(--reel) + 8px);
+  margin: 0 8% auto;
   background: #1a1410;
   border-radius: 40px;
   display: flex; align-items: center; justify-content: space-between;
@@ -581,6 +593,4 @@ button { font: inherit; cursor: pointer; }
 @media (max-width: 400px) {
   .key { font-size: .7rem; letter-spacing: 0; }
   .key span { font-size: .95rem; }
-  .cass-label { padding: 3px 6px 6px; }
-  .cass-date { font-size: 1rem; }
 }
