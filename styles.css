@@ -323,23 +323,24 @@ button { font: inherit; cursor: pointer; }
 }
 @keyframes deckIn { from { transform: translateY(30px) scale(.97); opacity: 0; } }
 
-.deck-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
-.brand { font-family: "Permanent Marker", cursive; font-size: 1.5rem; letter-spacing: 2px; color: #222; }
-.brand .dash { color: #c0392b; }
+.deck-top { display: flex; }
+/* deck name (artist-year) glows in the middle of the LCD's top row */
+.brand { letter-spacing: 2px; white-space: nowrap; }
 .brand b { font-weight: inherit; }
-.brand small { display: block; font-family: "VT323", monospace; font-size: .9rem; letter-spacing: 3px; color: #444; }
 
 .lcd {
   background: linear-gradient(#0f1a0c, #172615);
   border-radius: 6px;
   padding: 6px 12px;
-  min-width: 0; flex: 1 1 260px; max-width: 420px;
+  min-width: 0; flex: 1;
   font-family: "VT323", monospace;
   color: var(--lcd);
   text-shadow: 0 0 6px rgba(159,232,112,.6);
   box-shadow: inset 0 2px 8px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.6);
 }
-.lcd-row { display: flex; justify-content: space-between; font-size: 1.6rem; line-height: 1; }
+/* 1fr | auto | 1fr keeps the brand truly centred whatever the track/time widths */
+.lcd-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; white-space: nowrap; font-size: 1.6rem; line-height: 1; }
+#lcdTime { justify-self: end; }
 .lcd-marquee { overflow: hidden; white-space: nowrap; font-size: 1.25rem; }
 .lcd-marquee span { display: inline-block; padding-left: 100%; animation: marquee 14s linear infinite; }
 @keyframes marquee { to { transform: translateX(-100%); } }
@@ -584,8 +585,6 @@ button { font: inherit; cursor: pointer; }
 
   .player-overlay { padding: 0; align-items: stretch; }
   .deck { border-radius: 0; max-height: 100vh; max-height: 100dvh; padding: 12px; }
-  .deck-top { gap: 10px; }
-  .lcd { max-width: none; }
   .deck-middle { margin: 12px 0; gap: 12px; }
   .door { padding: 10px; }
   .jcard { max-height: 45vh; }

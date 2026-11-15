@@ -1,139 +1,222 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Google Tag Manager (keep as high in <head> as possible) -->
-  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-  })(window,document,'script','dataLayer','GTM-559GRVHW');</script>
-  <!-- End Google Tag Manager -->
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
-  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-  <title>Jerry Tapes — Grateful Dead &amp; Jerry Garcia Live</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Permanent+Marker&family=VT323&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <!-- Google Tag Manager (noscript) -->
-  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-559GRVHW"
-  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-  <!-- End Google Tag Manager (noscript) -->
-  <!-- ============ WALL OF BOXES ============ -->
-  <section id="wall" class="view">
-    <header class="wall-header">
-      <h1>Jerry Tapes<span class="tld">.net</span></h1>
-      <nav class="artist-switch" aria-label="Choose artist">
-        <a href="#/gd" data-artist="gd">Grateful Dead</a><a href="#/jg" data-artist="jg">Jerry Garcia</a>
-      </nav>
-      <p id="wallTagline"></p>
-    </header>
-    <div id="shelves" class="shelves"></div>
-    <footer class="wall-footer">
-      Recordings courtesy of the Internet Archive’s <a href="https://archive.org/details/GratefulDead" target="_blank" rel="noopener">Grateful Dead</a> and <a href="https://archive.org/details/taperssection" target="_blank" rel="noopener">Taper’s Section</a> collections.
-    </footer>
-  </section>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Google Tag Manager (keep as high in <head> as possible) -->
+    <script>
+      (function (w, d, s, l, i) {
+        w[l] = w[l] || [];
+        w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
+        var f = d.getElementsByTagName(s)[0],
+          j = d.createElement(s),
+          dl = l != "dataLayer" ? "&l=" + l : "";
+        j.async = true;
+        j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
+        f.parentNode.insertBefore(j, f);
+      })(window, document, "script", "dataLayer", "GTM-559GRVHW");
+    </script>
+    <!-- End Google Tag Manager -->
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <title>Jerry Tapes — Grateful Dead &amp; Jerry Garcia Live</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Permanent+Marker&family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript
+      ><iframe
+        src="https://www.googletagmanager.com/ns.html?id=GTM-559GRVHW"
+        height="0"
+        width="0"
+        style="display: none; visibility: hidden"
+      ></iframe
+    ></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <!-- ============ WALL OF BOXES ============ -->
+    <section id="wall" class="view">
+      <header class="wall-header">
+        <h1>Jerry Tapes<span class="tld">.net</span></h1>
+        <nav class="artist-switch" aria-label="Choose artist">
+          <a href="#/gd" data-artist="gd">Grateful Dead</a
+          ><a href="#/jg" data-artist="jg">Jerry Garcia</a>
+        </nav>
+        <p id="wallTagline"></p>
+      </header>
+      <div id="shelves" class="shelves"></div>
+      <footer class="wall-footer">
+        Recordings courtesy of the Internet Archive’s
+        <a
+          href="https://archive.org/details/GratefulDead"
+          target="_blank"
+          rel="noopener"
+          >Grateful Dead</a
+        >
+        and
+        <a
+          href="https://archive.org/details/taperssection"
+          target="_blank"
+          rel="noopener"
+          >Taper’s Section</a
+        >
+        collections.
+      </footer>
+    </section>
 
-  <!-- ============ TOP-DOWN BOX VIEW ============ -->
-  <section id="boxview" class="view hidden">
-    <div class="boxview-bar">
-      <button id="backToWall" class="chip">&larr; Back to the wall</button>
-      <h2 id="boxTitle"></h2>
-      <input id="boxFilter" type="search" placeholder="Filter by date, venue, city…" aria-label="Filter shows" />
-    </div>
-    <div class="crate-wrap">
-      <div class="crate">
-        <div class="flap flap-top"></div>
-        <div class="flap flap-bottom"></div>
-        <div class="flap flap-left"></div>
-        <div class="flap flap-right"></div>
-        <div class="crate-inner">
-          <div id="boxStatus" class="box-status"></div>
-          <div id="tapes" class="tapes"></div>
-        </div>
+    <!-- ============ TOP-DOWN BOX VIEW ============ -->
+    <section id="boxview" class="view hidden">
+      <div class="boxview-bar">
+        <button id="backToWall" class="chip">&larr; Back to the wall</button>
+        <h2 id="boxTitle"></h2>
+        <input
+          id="boxFilter"
+          type="search"
+          placeholder="Filter by date, venue, city…"
+          aria-label="Filter shows"
+        />
       </div>
-    </div>
-  </section>
-
-  <!-- ============ CASSETTE DECK ============ -->
-  <div id="player" class="player-overlay hidden" role="dialog" aria-modal="true" aria-label="Cassette player">
-    <div class="deck">
-      <div class="deck-top">
-        <div class="brand"><b id="brandArtist">GD</b><span class="dash">-</span><b id="brandYear">0000</b> <small>STEREO CASSETTE DECK</small></div>
-        <div class="lcd">
-          <div class="lcd-row">
-            <span id="lcdTrack">TRK --/--</span>
-            <span id="lcdTime">00:00</span>
-          </div>
-          <div class="lcd-marquee"><span id="lcdTitle">INSERT TAPE</span></div>
-        </div>
-      </div>
-
-      <div class="deck-middle">
-        <!-- cassette door -->
-        <div class="door">
-          <div class="cassette" id="cassette">
-            <div class="cass-label">
-              <div class="cass-label-top">
-                <span class="side">A</span>
-                <span id="cassDate" class="cass-date"></span>
-                <span id="cassBrand" class="cass-brand">C-90</span>
-              </div>
-              <div id="cassVenue" class="cass-venue"></div>
-              <div class="cass-window">
-                <div class="reel left"><div class="tape" id="tapeLeft"></div><div class="hub"></div></div>
-                <div class="window-glass" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-                <div class="reel right"><div class="tape" id="tapeRight"></div><div class="hub"></div></div>
-              </div>
-            </div>
-            <div class="cass-bottom">
-              <i></i><i></i><i></i><i></i>
-            </div>
+      <div class="crate-wrap">
+        <div class="crate">
+          <div class="flap flap-top"></div>
+          <div class="flap flap-bottom"></div>
+          <div class="flap flap-left"></div>
+          <div class="flap flap-right"></div>
+          <div class="crate-inner">
+            <div id="boxStatus" class="box-status"></div>
+            <div id="tapes" class="tapes"></div>
           </div>
         </div>
+      </div>
+    </section>
 
-        <!-- J-card track list -->
-        <div class="jcard">
-          <div class="jcard-head">
-            <div id="jDate" class="j-date"></div>
-            <div id="jVenue" class="j-venue"></div>
-            <label class="j-source">Source:
-              <select id="sourceSelect"></select>
+    <!-- ============ CASSETTE DECK ============ -->
+    <div
+      id="player"
+      class="player-overlay hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Cassette player"
+    >
+      <div class="deck">
+        <div class="deck-top">
+          <div class="lcd">
+            <div class="lcd-row">
+              <span id="lcdTrack">TRK --/--</span>
+              <span class="brand">
+                <b id="brandArtist">GD</b><span class="dash">-</span
+                ><b id="brandYear">0000</b>
+              </span>
+              <span id="lcdTime">00:00</span>
+            </div>
+            <div class="lcd-marquee">
+              <span id="lcdTitle">INSERT TAPE</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="deck-middle">
+          <!-- cassette door -->
+          <div class="door">
+            <div class="cassette" id="cassette">
+              <div class="cass-label">
+                <div class="cass-label-top">
+                  <span class="side">A</span>
+                  <span id="cassDate" class="cass-date"></span>
+                  <span id="cassBrand" class="cass-brand">C-90</span>
+                </div>
+                <div id="cassVenue" class="cass-venue"></div>
+                <div class="cass-window">
+                  <div class="reel left">
+                    <div class="tape" id="tapeLeft"></div>
+                    <div class="hub"></div>
+                  </div>
+                  <div class="window-glass" aria-hidden="true">
+                    <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                  </div>
+                  <div class="reel right">
+                    <div class="tape" id="tapeRight"></div>
+                    <div class="hub"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="cass-bottom"><i></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
+
+          <!-- J-card track list -->
+          <div class="jcard">
+            <div class="jcard-head">
+              <div id="jDate" class="j-date"></div>
+              <div id="jVenue" class="j-venue"></div>
+              <label class="j-source"
+                >Source:
+                <select id="sourceSelect"></select>
+              </label>
+            </div>
+            <ol id="trackList" class="tracklist"></ol>
+          </div>
+        </div>
+
+        <div class="deck-bottom">
+          <div class="keys" role="group" aria-label="Transport controls">
+            <button class="key" id="kEject" title="Eject (Esc)">
+              <span>&#9167;</span>EJECT
+            </button>
+            <button
+              class="key"
+              id="kPrev"
+              title="Rewind to previous song (&larr;)"
+            >
+              <span>&#9664;&#9664;</span>REW
+            </button>
+            <button class="key" id="kPlay" title="Play (Space)">
+              <span>&#9654;</span>PLAY
+            </button>
+            <button class="key" id="kPause" title="Pause (Space)">
+              <span>&#10074;&#10074;</span>PAUSE
+            </button>
+            <button class="key" id="kStop" title="Stop">
+              <span>&#9632;</span>STOP
+            </button>
+            <button
+              class="key"
+              id="kNext"
+              title="Fast-forward to next song (&rarr;)"
+            >
+              <span>&#9654;&#9654;</span>F.FWD
+            </button>
+          </div>
+          <div class="sliders">
+            <label
+              >TAPE
+              <input id="seek" type="range" min="0" max="1000" value="0" />
             </label>
+            <label
+              >VOL
+              <input id="volume" type="range" min="0" max="100" value="85" />
+            </label>
+            <a
+              id="archiveLink"
+              class="archive-link"
+              href="#"
+              target="_blank"
+              rel="noopener"
+              >view on archive.org &nearr;</a
+            >
           </div>
-          <ol id="trackList" class="tracklist"></ol>
-        </div>
-      </div>
-
-      <div class="deck-bottom">
-        <div class="keys" role="group" aria-label="Transport controls">
-          <button class="key" id="kEject"  title="Eject (Esc)"><span>&#9167;</span>EJECT</button>
-          <button class="key" id="kPrev"   title="Rewind to previous song (&larr;)"><span>&#9664;&#9664;</span>REW</button>
-          <button class="key" id="kPlay"   title="Play (Space)"><span>&#9654;</span>PLAY</button>
-          <button class="key" id="kPause"  title="Pause (Space)"><span>&#10074;&#10074;</span>PAUSE</button>
-          <button class="key" id="kStop"   title="Stop"><span>&#9632;</span>STOP</button>
-          <button class="key" id="kNext"   title="Fast-forward to next song (&rarr;)"><span>&#9654;&#9654;</span>F.FWD</button>
-        </div>
-        <div class="sliders">
-          <label>TAPE
-            <input id="seek" type="range" min="0" max="1000" value="0" />
-          </label>
-          <label>VOL
-            <input id="volume" type="range" min="0" max="100" value="85" />
-          </label>
-          <a id="archiveLink" class="archive-link" href="#" target="_blank" rel="noopener">view on archive.org &nearr;</a>
         </div>
       </div>
     </div>
-  </div>
 
-  <audio id="audio" preload="auto" crossorigin="anonymous"></audio>
-  <script src="gapless.js"></script>
-  <script src="app.js"></script>
-</body>
+    <audio id="audio" preload="auto" crossorigin="anonymous"></audio>
+    <script src="gapless.js"></script>
+    <script src="app.js"></script>
+  </body>
 </html>
