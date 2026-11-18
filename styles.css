@@ -521,6 +521,49 @@ button { font: inherit; cursor: pointer; }
 .j-venue { font-size: .95rem; line-height: 1.15; }
 .j-source { display: block; font-size: .8rem; margin-top: 4px; }
 .j-source select { font: inherit; font-size: .8rem; width: 100%; max-width: 100%; text-overflow: ellipsis; background: #fffaf0; border: 1px solid #c9bc9a; border-radius: 3px; }
+/* page bar: ‹ Notes › with dots underneath */
+.jnav { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.jnav-arrow {
+  flex: none; width: 30px; height: 26px; padding: 0;
+  font: 700 1.4rem/1 Georgia, serif; color: #e8573a;
+  background: none; border: 1px solid #d9cba6; border-radius: 3px; cursor: pointer;
+}
+.jnav-arrow:hover, .jnav-arrow:focus-visible { background: #e8573a; color: #fff; border-color: #e8573a; outline: none; }
+.jnav-mid { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.jnav-name { font-family: "Permanent Marker", cursive; font-size: .95rem; line-height: 1; letter-spacing: .03em; }
+.jnav-dots { display: flex; gap: 6px; }
+.jnav-dots button {
+  width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%;
+  background: #d3c49c; cursor: pointer;
+}
+.jnav-dots button.on { background: #e8573a; }
+
+.jpages { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.jpage { overflow-y: auto; flex: 1; min-height: 0; }
+.jpage:not(.active) { display: none; }
+.jpage.in-right { animation: jIn .22s ease-out; --from: 24px; }
+.jpage.in-left { animation: jIn .22s ease-out; --from: -24px; }
+@keyframes jIn { from { opacity: 0; transform: translateX(var(--from)); } }
+@media (prefers-reduced-motion: reduce) { .jpage.in-right, .jpage.in-left { animation: none; } }
+
+/* text pages: notes, performers, reviews, history */
+.jtext { font-size: .9rem; line-height: 1.3; padding-right: 4px; }
+.jtext h4 { margin: 8px 0 2px; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: #c0392b; }
+.jtext h4:first-child { margin-top: 2px; }
+.jtext h4 a { color: inherit; }
+.jtext p { margin: 0 0 6px; overflow-wrap: anywhere; }
+.jtext .pre { white-space: pre-line; }
+.jtext .muted { color: #6b5d43; }
+.jtext .small { font-size: .78rem; margin-top: 8px; }
+.jtext dl { margin: 0 0 6px; display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; }
+.jtext dt { font-weight: 700; }
+.jtext dd { margin: 0; color: #4a3f2c; }
+.review { border-bottom: 1px dashed #d3c49c; padding: 4px 0 6px; }
+.review:last-child { border-bottom: 0; }
+.rv-head { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; }
+.rv-stars { color: #e8a317; letter-spacing: 1px; }
+.rv-by { font-family: "VT323", monospace; font-size: .9rem; color: #6b5d43; }
+
 .tracklist { margin: 0; padding: 0; list-style: none; counter-reset: trk; overflow-y: auto; flex: 1; font-size: .98rem; }
 .tracklist li { cursor: pointer; padding: 1px 4px; border-radius: 3px; display: flex; gap: 6px; counter-increment: trk; }
 .tracklist li:not(.muted)::before { content: counter(trk, decimal-leading-zero) "."; font-family: "VT323", monospace; color: #8a7a5a; min-width: 1.8em; }

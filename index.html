@@ -160,7 +160,21 @@
                 <select id="sourceSelect"></select>
               </label>
             </div>
-            <ol id="trackList" class="tracklist"></ol>
+            <div class="jnav">
+              <button class="jnav-arrow" id="jPrev" type="button" aria-label="Previous page">&#8249;</button>
+              <div class="jnav-mid">
+                <span id="jPageName" class="jnav-name" aria-live="polite">Tracks</span>
+                <span id="jDots" class="jnav-dots"></span>
+              </div>
+              <button class="jnav-arrow" id="jNext" type="button" aria-label="Next page">&#8250;</button>
+            </div>
+            <div id="jPages" class="jpages">
+              <ol id="trackList" class="tracklist jpage active" data-name="Tracks"></ol>
+              <div id="jNotes" class="jpage jtext" data-name="Notes"></div>
+              <div id="jLineup" class="jpage jtext" data-name="Performers"></div>
+              <div id="jReviews" class="jpage jtext" data-name="Reviews"></div>
+              <div id="jHistory" class="jpage jtext" data-name="History" data-off="1"></div>
+            </div>
           </div>
         </div>
 

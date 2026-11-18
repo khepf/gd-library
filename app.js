@@ -107,17 +107,114 @@
       return shows;
     },
 
+    // one request gives us the songs, the taper's notes and listener reviews for a recording
     _meta: new Map(),
-    async tracks(identifier) {
+    async recording(identifier) {
       if (this._meta.has(identifier)) return this._meta.get(identifier);
       const res = await fetch(`https://archive.org/metadata/${encodeURIComponent(identifier)}`);
       if (!res.ok) throw new Error(`archive.org metadata failed (${res.status})`);
       const data = await res.json();
-      const tracks = pickTracks(identifier, data.files || []);
-      this._meta.set(identifier, tracks);
-      return tracks;
+      const md = data.metadata || {};
+      const out = {
+        tracks: pickTracks(identifier, data.files || []),
+        info: {
+          description: htmlToText(md.description),
+          notes: htmlToText(md.notes),
+          source: htmlToText(md.source),
+          lineage: htmlToText(md.lineage),
+          taper: htmlToText(md.taper),
+          transferer: htmlToText(md.transferer),
+        },
+        reviews: Array.isArray(data.reviews) ? data.reviews : [],
+      };
+      this._meta.set(identifier, out);
+      return out;
+    },
+
+    // Wikipedia paragraphs that mention this exact date alongside the band.
+    // Only famous shows have their own articles, but tour/album/venue pages often cover a date.
+    _hist: new Map(),
+    async history(artistName, iso) {
+      const key = `${artistName}|${iso}`;
+      if (this._hist.has(key)) return this._hist.get(key);
+      const cacheKey = `wiki:${key}`;
+      try {
+        const c = JSON.parse(localStorage.getItem(cacheKey) || "null");
+        if (c && Date.now() - c.t < 7 * CACHE_TTL_MS) { this._hist.set(key, c.v); return c.v; }
+      } catch { /* ignore */ }
+
+      const [y, m, d] = iso.split("-").map(Number);
+      if (!y || !m || !d) return [];
+      const month = new Date(2000, m - 1, 1).toLocaleString("en-US", { month: "long" });
+      const forms = [`${month} ${d}, ${y}`, `${d} ${month} ${y}`];
+      const wiki = (p) => fetch(`https://en.wikipedia.org/w/api.php?${new URLSearchParams({ format: "json", origin: "*", ...p })}`)
+        .then((r) => { if (!r.ok) throw new Error(`wikipedia ${r.status}`); return r.json(); });
+
+      const found = await wiki({
+        action: "query", list: "search", srlimit: "4", srprop: "",
+        srsearch: `"${artistName}" ("${forms[0]}" OR "${forms[1]}")`,
+      });
+      const titles = ((found.query && found.query.search) || []).map((h) => h.title).slice(0, 4);
+      const pages = await Promise.all(titles.map(async (title) => {
+        const j = await wiki({ action: "query", prop: "extracts", explaintext: "1", redirects: "1", titles: title });
+        const pg = Object.values((j.query && j.query.pages) || {})[0];
+        const paras = String((pg && pg.extract) || "").split(/\n+/)
+          .filter((p) => !/^=+.*=+$/.test(p.trim()) && forms.some((f) => p.includes(f)))
+          .slice(0, 3)
+          .map((p) => (p.length > 700 ? p.slice(0, 700).replace(/\s+\S*$/, "") + "…" : p));
+        return { title, url: `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`, paras };
+      }));
+      const v = pages.filter((p) => p.paras.length);
+      this._hist.set(key, v);
+      try { localStorage.setItem(cacheKey, JSON.stringify({ t: Date.now(), v })); } catch { /* quota */ }
+      return v;
     },
   };
+
+  // archive.org text fields are user-written HTML (or arrays of it). Parse it inertly and keep only the text.
+  function htmlToText(v) {
+    if (v == null) return "";
+    const s = (Array.isArray(v) ? v.join("\n") : String(v))
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|h\d|tr)>/gi, "\n");
+    const text = new DOMParser().parseFromString(s, "text/html").body.textContent || "";
+    return text.replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  }
+
+  // Who was in the band on a given date. [name, instruments, from, to] (inclusive, ISO dates)
+  const GD_LINEUP = [
+    ["Jerry Garcia", "lead guitar, vocals"],
+    ["Bob Weir", "rhythm guitar, vocals"],
+    ["Phil Lesh", "bass, vocals"],
+    ["Bill Kreutzmann", "drums"],
+    ["Mickey Hart", "drums, percussion", "1967-09-29", "1971-02-18"],
+    ["Mickey Hart", "drums, percussion", "1974-10-20"],
+    ["Ron “Pigpen” McKernan", "organ, harmonica, vocals", "", "1971-08-26"],
+    ["Ron “Pigpen” McKernan", "organ, harmonica, vocals", "1971-12-01", "1972-06-17"],
+    ["Tom Constanten", "keyboards", "1968-11-23", "1970-01-30"],
+    ["Keith Godchaux", "piano", "1971-10-19", "1979-02-17"],
+    ["Donna Jean Godchaux", "vocals", "1971-12-31", "1979-02-17"],
+    ["Brent Mydland", "keyboards, vocals", "1979-04-22", "1990-07-23"],
+    ["Vince Welnick", "keyboards, vocals", "1990-09-07"],
+    ["Bruce Hornsby", "piano, accordion, vocals", "1990-09-15", "1992-03-24"],
+  ];
+  function lineupOn(iso) {
+    return GD_LINEUP.filter(([, , from, to]) => (!from || iso >= from) && (!to || iso <= to))
+      .map(([name, role]) => ({ name, role }));
+  }
+
+  // "Jerry Garcia - guitar, vocals" style lines in the taper's notes
+  const INSTRUMENT = /\b(guitars?|bass|drums?|percussion|keyboards?|keys|piano|organ|vocals?|harmonica|sax(ophone)?|mandolin|banjo|fiddle|violin|pedal steel|dobro|clarinet|trumpet|horns?|flute|accordion|synth(esizer)?s?)\b/i;
+  function personnelFrom(text) {
+    const out = [];
+    for (const line of text.split("\n")) {
+      const m = /^\s*[-*•]?\s*([A-Z][A-Za-z.'’"“” -]{3,40}?)\s*(?:[-–—:(]|,\s)\s*([^)]{3,80})\)?\s*$/.exec(line);
+      if (!m || !INSTRUMENT.test(m[2]) || m[1].trim().split(/\s+/).length < 2) continue;
+      if (/\b(set|disc|cd|track|source|lineage|encore)\b/i.test(m[1])) continue;
+      out.push({ name: m[1].trim(), role: m[2].trim() });
+    }
+    return out;
+  }
 
   function sourceType(id) {
     const s = id.toLowerCase();
@@ -521,13 +618,20 @@
     $("#sourceSelect").value = rec.id;
     $("#trackList").innerHTML = "";
     $("#trackList").append(el("li", "muted", "Threading the tape…"));
+    for (const id of ["#jNotes", "#jReviews"]) { $(id).innerHTML = ""; $(id).append(el("p", "muted", "Threading the tape…")); }
+    renderLineup(artist, show, null);
+    if (!sameShow) { setPage("Tracks"); loadHistory(artist, show); }
+    else setPage(jcard.page);
     lcd("TRK --/--", "00:00", "LOADING…");
     setReels(0);
 
     const token = ++player.loadToken;
     try {
-      const tracks = await api.tracks(rec.id);
+      const { tracks, info, reviews } = await api.recording(rec.id);
       if (token !== player.loadToken) return;
+      renderNotes(info);
+      renderReviews(reviews);
+      renderLineup(artist, show, info);
       if (!tracks.length) throw new Error("no streamable audio in this recording");
       player.tracks = tracks;
       player.offsets = [];
@@ -544,6 +648,7 @@
       if (token !== player.loadToken) return;
       $("#trackList").innerHTML = "";
       $("#trackList").append(el("li", "muted", `Tape jammed: ${err.message}. Try another source.`));
+      for (const id of ["#jNotes", "#jReviews"]) { $(id).innerHTML = ""; $(id).append(el("p", "muted", "Couldn't load this recording's details.")); }
       lcd("TRK --/--", "00:00", "TAPE JAMMED");
     }
   }
@@ -568,6 +673,155 @@
       o.title = o.textContent;
       sel.append(o);
     });
+  }
+
+  // ---------------------------------------------------------
+  // J-card pages: Tracks · Notes · Performers · Reviews · History, flipped with ‹ › or a swipe
+  // ---------------------------------------------------------
+  const jcard = { page: "Tracks" };
+  function jPages() { return [...$("#jPages").children].filter((p) => !p.dataset.off); }
+
+  function setPage(name, dir) {
+    const pages = jPages();
+    let i = pages.findIndex((p) => p.dataset.name === name);
+    if (i < 0) i = 0;
+    const page = pages[i];
+    jcard.page = page.dataset.name;
+    [...$("#jPages").children].forEach((p) => {
+      p.classList.toggle("active", p === page);
+      p.classList.remove("in-left", "in-right");
+    });
+    if (dir) { void page.offsetWidth; page.classList.add(dir > 0 ? "in-right" : "in-left"); }
+    $("#jPageName").textContent = page.dataset.label || page.dataset.name;
+    const dots = $("#jDots");
+    dots.innerHTML = "";
+    pages.forEach((p, k) => {
+      const b = el("button", k === i ? "on" : "");
+      b.type = "button";
+      b.setAttribute("aria-label", p.dataset.name);
+      b.title = p.dataset.name;
+      b.addEventListener("click", () => setPage(p.dataset.name, Math.sign(k - i)));
+      dots.append(b);
+    });
+    if (page.id === "trackList") {
+      const cur = page.querySelector("li.current");
+      if (cur) cur.scrollIntoView({ block: "nearest" });
+    }
+  }
+  function flipPage(step) {
+    const pages = jPages();
+    const i = pages.findIndex((p) => p.dataset.name === jcard.page);
+    setPage(pages[(i + step + pages.length) % pages.length].dataset.name, step);
+  }
+  $("#jPrev").addEventListener("click", () => flipPage(-1));
+  $("#jNext").addEventListener("click", () => flipPage(1));
+  {
+    // horizontal swipe on the page area (iPad / phones)
+    let sx = 0, sy = 0, tracking = false;
+    const area = $("#jPages");
+    area.addEventListener("touchstart", (e) => {
+      const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tracking = e.touches.length === 1;
+    }, { passive: true });
+    area.addEventListener("touchend", (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) flipPage(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  }
+
+  function textSection(box, heading, text) {
+    if (!text) return;
+    if (heading) box.append(el("h4", null, heading));
+    box.append(el("p", "pre", text));
+  }
+
+  function renderNotes(info) {
+    const box = $("#jNotes");
+    box.innerHTML = "";
+    textSection(box, "", info.description);
+    textSection(box, "Notes", info.notes);
+    textSection(box, "Source", info.source);
+    if (info.lineage !== info.source) textSection(box, "Lineage", info.lineage);
+    const who = [["Taped by", info.taper], ["Transferred by", info.transferer]].filter(([, v]) => v);
+    if (who.length) {
+      const dl = el("dl", "who");
+      for (const [k, v] of who) dl.append(el("dt", null, k), el("dd", null, v));
+      box.append(dl);
+    }
+    if (!box.childElementCount) box.append(el("p", "muted", "The taper didn't leave any notes for this source."));
+  }
+
+  function renderReviews(reviews) {
+    const box = $("#jReviews");
+    box.innerHTML = "";
+    const list = [...reviews].sort((a, b) => String(b.reviewdate || "").localeCompare(String(a.reviewdate || "")));
+    $("#jReviews").dataset.label = list.length ? `Reviews (${list.length})` : "Reviews";
+    if (!list.length) {
+      box.append(el("p", "muted", "No one has reviewed this source yet."));
+    }
+    for (const r of list) {
+      const art = el("article", "review");
+      const head = el("div", "rv-head");
+      const stars = Math.max(0, Math.min(5, parseInt(r.stars, 10) || 0));
+      if (stars) {
+        const s = el("span", "rv-stars", "★".repeat(stars) + "☆".repeat(5 - stars));
+        s.setAttribute("aria-label", `${stars} out of 5 stars`);
+        head.append(s);
+      }
+      if (r.reviewtitle) head.append(el("strong", null, String(r.reviewtitle)));
+      art.append(head);
+      const by = [r.reviewer, String(r.reviewdate || "").slice(0, 10)].filter(Boolean).join(" · ");
+      if (by) art.append(el("div", "rv-by", by));
+      if (r.reviewbody) art.append(el("p", "pre", String(r.reviewbody).trim()));
+      box.append(art);
+    }
+    if (jcard.page === "Reviews") $("#jPageName").textContent = $("#jReviews").dataset.label;
+  }
+
+  function renderLineup(artist, show, info) {
+    const box = $("#jLineup");
+    box.innerHTML = "";
+    const core = artist === "gd" ? lineupOn(show.date) : [{ name: "Jerry Garcia", role: "guitar, vocals" }];
+    const known = (name) => core.some((c) => name.toLowerCase().includes(c.name.split(" ").pop().toLowerCase()));
+    const fromNotes = info ? personnelFrom([info.description, info.notes].join("\n")).filter((p) => !known(p.name)) : [];
+    const list = (people) => {
+      const dl = el("dl", "lineup");
+      for (const p of people) dl.append(el("dt", null, p.name), el("dd", null, p.role));
+      return dl;
+    };
+    if (artist === "gd") {
+      box.append(el("h4", null, "The band"), list(core));
+    } else {
+      const proj = player.rec && player.rec.project;
+      box.append(el("h4", null, proj ? proj.name : "Jerry Garcia"), list(core));
+    }
+    if (fromNotes.length) box.append(el("h4", null, "Also listed in the notes"), list(fromNotes));
+    box.append(el("p", "muted small", artist === "gd"
+      ? "Based on the band's lineup on this date. Guests usually turn up in the Notes."
+      : "Garcia's side-project lineups changed often. Check the Notes for who played this night."));
+  }
+
+  async function loadHistory(artist, show) {
+    const page = $("#jHistory");
+    page.dataset.off = "1";
+    page.innerHTML = "";
+    const want = show;
+    try {
+      const found = await api.history(ARTISTS[artist].name, show.date);
+      if (player.show !== want || !found.length) return;
+      for (const a of found) {
+        const h = el("h4");
+        const link = el("a", null, a.title);
+        link.href = a.url; link.target = "_blank"; link.rel = "noopener";
+        h.append(link);
+        page.append(h);
+        for (const p of a.paras) page.append(el("p", null, p));
+      }
+      page.append(el("p", "muted small", "From Wikipedia, CC BY-SA."));
+      delete page.dataset.off;
+      setPage(jcard.page); // refresh the dots
+    } catch { /* no history page, that's fine */ }
   }
 
   function renderTrackList() {
