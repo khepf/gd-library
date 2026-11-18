@@ -346,6 +346,19 @@ button { font: inherit; cursor: pointer; }
 @keyframes marquee { to { transform: translateX(-100%); } }
 
 .deck-middle { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 18px; margin: 16px 0; }
+/* wide layout: the LCD only spans the cassette column, and the J-card runs the full height beside both */
+@media (min-width: 761px) {
+  .deck { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px 18px; }
+  .deck-middle { display: contents; }
+  .deck-top { grid-column: 1; grid-row: 1; }
+  .door { grid-column: 1; grid-row: 2; }
+  .deck .jcard { /* .deck for specificity: the base .jcard rule further down caps max-height */
+    grid-column: 2; grid-row: 1 / span 2;
+    max-height: none;
+    contain: size; /* the long track list mustn't grow the row: fill the LCD + cassette height and scroll */
+  }
+  .deck-bottom { grid-column: 1 / -1; grid-row: 3; }
+}
 /* stacked layout: cassette, then the keys and sliders, then the J-card track list.
    .deck-middle steps aside (display: contents) so its children can be ordered alongside .deck-bottom. */
 @media (max-width: 760px) {
