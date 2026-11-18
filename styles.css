@@ -251,7 +251,7 @@ button { font: inherit; cursor: pointer; }
   --c: #e4572e;
   position: relative;
   display: flex; align-items: stretch;
-  height: 72px;
+  height: 50px; /* real cases are ~110×17mm, so keep the spine long and thin */
   border: 0; padding: 0; text-align: left; color: #1d1712;
   background: linear-gradient(180deg, rgba(255,255,255,.65), rgba(220,230,235,.35) 20%, rgba(255,255,255,.25) 80%, rgba(255,255,255,.55));
   border-radius: 3px;
@@ -268,29 +268,29 @@ button { font: inherit; cursor: pointer; }
   outline: none; z-index: 2;
 }
 .tape-case .spine {
-  flex: 1; margin: 4px; border-radius: 2px;
+  flex: 1; margin: 3px; border-radius: 2px;
   background:
     linear-gradient(90deg, var(--c) 0 12px, transparent 12px),
     linear-gradient(#fbf6e8, #efe6cf);
-  padding: 2px 8px 2px 18px;
+  padding: 1px 8px 1px 18px;
   display: flex; flex-direction: column; justify-content: center;
   overflow: hidden;
   border-left: 0;
 }
-.tape-case .t-date { font-weight: 700; font-size: 1.02rem; line-height: 1.1; }
+.tape-case .t-date { font-weight: 700; font-size: .9rem; line-height: 1.05; }
 .tape-case .t-venue {
-  font-size: .82rem; line-height: 1.1;
+  font-size: .74rem; line-height: 1.05;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .tape-case .t-lineage {
-  font-family: "VT323", monospace; font-size: .85rem; line-height: 1; color: #6b5d43;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; padding-right: 22px;
+  font-family: "VT323", monospace; font-size: .8rem; line-height: .95; color: #6b5d43;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; padding-right: 22px;
 }
 .tape-case .t-of {
-  position: absolute; right: 9px; bottom: 6px;
+  position: absolute; right: 8px; bottom: 4px;
   font-family: "VT323", monospace; font-size: .8rem; color: #6b5d43;
 }
-.tape-case .t-badges { position: absolute; right: 9px; top: 6px; display: flex; gap: 3px; }
+.tape-case .t-badges { position: absolute; right: 8px; top: 5px; display: flex; gap: 3px; }
 .tape-case .t-src, .tape-case .t-proj {
   font-family: "VT323", monospace; font-size: .8rem; line-height: 1.2;
   background: var(--c); color: #fff; padding: 0 4px; border-radius: 2px;
@@ -489,12 +489,12 @@ button { font: inherit; cursor: pointer; }
     radial-gradient(circle, transparent calc(var(--h) * .3), #f4f4f4 calc(var(--h) * .3 + .5px) calc(var(--h) * .5));
   -webkit-mask: radial-gradient(circle, transparent calc(var(--h) * .13), #000 calc(var(--h) * .13 + .5px));
           mask: radial-gradient(circle, transparent calc(var(--h) * .13), #000 calc(var(--h) * .13 + .5px));
-  animation: spin 1.6s linear infinite;
+  animation: spin 2.6s linear infinite;
   animation-play-state: paused;
 }
 .playing .reel .hub { animation-play-state: running; }
 .seeking-fwd .reel .hub { animation-duration: .35s; animation-play-state: running; }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform: rotate(-360deg); } }
 
 .cass-bottom {
   height: 18%;
