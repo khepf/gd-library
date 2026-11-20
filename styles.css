@@ -6,9 +6,11 @@
   --kraft-dark: #a87942;
   --kraft-light: #ddb47c;
   --marker: #1c1712;
-  --wood-1: #5a3a22;
-  --wood-2: #4a2f1b;
-  --wood-3: #6b4528;
+  /* deep walnut, kept close in tone so the paneling reads as texture behind the boxes */
+  --wood-1: #3e2817;
+  --wood-2: #362213;
+  --wood-3: #452d1a;
+  --wood-groove: #2a1a0e;
   --cream: #f3e9d2;
   --lcd: #9fe870;
 }
@@ -27,13 +29,23 @@ button { font: inherit; cursor: pointer; }
 /* ---------------- WALL ---------------- */
 #wall {
   min-height: 100vh;
+  position: relative;
+  isolation: isolate; /* keeps the vignette below the shelves */
   /* 70s wood paneling */
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(255, 210, 140, .18), transparent 60%),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 210, 140, .14), transparent 60%),
     repeating-linear-gradient(90deg,
-      var(--wood-1) 0 2px, var(--wood-3) 2px 70px, var(--wood-2) 70px 74px,
-      var(--wood-1) 74px 150px, #3c2616 150px 153px, var(--wood-3) 153px 220px);
+      var(--wood-1) 0 2px, var(--wood-3) 2px 70px, var(--wood-2) 70px 73px,
+      var(--wood-1) 73px 150px, var(--wood-groove) 150px 152px, var(--wood-3) 152px 220px);
   padding: 24px 3vw 40px;
+}
+/* vignette, pinned to the viewport so the edges stay dark however far you scroll */
+#wall::before {
+  content: "";
+  position: fixed; inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 40%, rgba(12, 6, 2, .6) 100%);
 }
 .wall-header { text-align: center; margin-bottom: 18px; }
 .wall-header h1 {
@@ -277,7 +289,13 @@ button { font: inherit; cursor: pointer; }
   overflow: hidden;
   border-left: 0;
 }
-.tape-case .t-date { font-weight: 700; font-size: .9rem; line-height: 1.05; }
+.tape-case .t-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tape-case .t-date { font-weight: 700; font-size: .9rem; line-height: 1.05; flex-shrink: 0; }
+.tape-case .t-band {
+  flex: 1; min-width: 0;
+  font-size: .72rem; font-style: italic; line-height: 1.05; color: #6b5d43;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .tape-case .t-venue {
   font-size: .74rem; line-height: 1.05;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -290,7 +308,7 @@ button { font: inherit; cursor: pointer; }
   position: absolute; right: 8px; bottom: 4px;
   font-family: "VT323", monospace; font-size: .8rem; color: #6b5d43;
 }
-.tape-case .t-badges { position: absolute; right: 8px; top: 5px; display: flex; gap: 3px; }
+.tape-case .t-badges { margin-left: auto; flex-shrink: 0; display: flex; gap: 3px; }
 .tape-case .t-src, .tape-case .t-proj {
   font-family: "VT323", monospace; font-size: .8rem; line-height: 1.2;
   background: var(--c); color: #fff; padding: 0 4px; border-radius: 2px;

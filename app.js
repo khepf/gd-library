@@ -510,12 +510,6 @@
       b.style.setProperty("--c", color);
       b.style.setProperty("--tilt", `${(r - 0.5) * 2.4}deg`);
       b.style.setProperty("--delay", `${Math.min(i++ * 10, 600)}ms`);
-      const spine = el("div", "spine");
-      spine.append(
-        el("div", "t-date", fmtDate(show.date)),
-        el("div", "t-venue", venue),
-        el("div", "t-lineage", recLabel(rec.id, show.date)),
-      );
       const badges = el("span", "t-badges");
       if (rec.project) {
         const p = el("span", "t-proj", rec.project.tag);
@@ -523,7 +517,20 @@
         badges.append(p);
       }
       badges.append(el("span", "t-src", rec.type));
-      b.append(spine, badges);
+      // date + band name share a row with the badges, so a long band name truncates before them
+      const head = el("div", "t-head");
+      head.append(
+        el("span", "t-date", fmtDate(show.date)),
+        el("span", "t-band", rec.project ? rec.project.name : ARTISTS[artist].name),
+        badges,
+      );
+      const spine = el("div", "spine");
+      spine.append(
+        head,
+        el("div", "t-venue", venue),
+        el("div", "t-lineage", recLabel(rec.id, show.date)),
+      );
+      b.append(spine);
       if (n > 1) b.append(el("span", "t-of", `${n} versions`));
       b.title = [fmtLongDate(show.date), rec.project && rec.project.name, show.venue, show.location, rec.id,
         rec.rating ? `★ ${rec.rating.toFixed(1)}` : "", `${rec.downloads.toLocaleString()} plays`,
