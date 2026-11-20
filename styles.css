@@ -77,11 +77,37 @@ button { font: inherit; cursor: pointer; }
   transition: background .15s, color .15s, opacity .15s;
 }
 .artist-switch a:hover { opacity: 1; }
+@media (max-width: 480px) { .artist-switch a { padding: 5px 10px; font-size: .9rem; } }
 .artist-switch a.active { background: #ffd86b; color: #2b1c11; opacity: 1; box-shadow: 0 2px 0 #b5361d; }
 .wall-footer { text-align: center; margin-top: 30px; opacity: .7; font-size: .9rem; }
 .wall-footer a { color: #ffd86b; }
 
 .shelves { max-width: 1250px; margin: 0 auto; }
+
+/* Songs tab */
+.song-panel { max-width: 760px; margin: 18px auto 0; text-align: center; }
+.song-form { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+#songInput {
+  font: inherit; font-size: 1.15rem; padding: 8px 12px; border-radius: 6px; border: 0;
+  background: rgba(243,233,210,.95); color: #2b1c11;
+  flex: 1 1 280px; max-width: 480px; min-width: 0;
+}
+.song-panel h3 {
+  font-family: "Permanent Marker", cursive; font-weight: normal; color: #ffd86b;
+  margin: 30px 0 10px; font-size: 1.2rem;
+}
+.song-picks { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.song-picks .chip { text-decoration: none; }
+.song-note { opacity: .7; font-size: .85rem; margin-top: 26px; }
+
+/* year labels between a song's tapes */
+.tape-year {
+  grid-column: 1 / -1;
+  font-family: "Permanent Marker", cursive; font-size: 1.3rem; color: #ffd86b;
+  margin: 12px 2px 0; border-bottom: 1px solid rgba(255,216,107,.3);
+  text-shadow: 1px 1px 0 rgba(0,0,0,.5);
+}
+.tape-year:first-child { margin-top: 0; }
 .shelf {
   position: relative;
   display: flex;

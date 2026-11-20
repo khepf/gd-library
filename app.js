@@ -110,21 +110,44 @@
         if (cached && Date.now() - cached.t < CACHE_TTL_MS) return sortRecordings(cached.shows);
       } catch { /* ignore bad cache */ }
 
-      const params = new URLSearchParams({
-        q: `${ARTISTS[artist].query} AND year:${year}`,
-        rows: "5000",
-        output: "json",
-      });
-      ["identifier", "date", "title", "venue", "coverage", "downloads", "avg_rating"]
+      const docs = await this._search(`${ARTISTS[artist].query} AND year:${year}`, 5000);
+      const shows = groupByShow(docs, artist);
+      try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), shows })); } catch { /* quota */ }
+      return shows;
+    },
+
+    async _search(q, rows, extraFields = []) {
+      const params = new URLSearchParams({ q, rows: String(rows), output: "json" });
+      ["identifier", "date", "title", "venue", "coverage", "downloads", "avg_rating", ...extraFields]
         .forEach((f) => params.append("fl[]", f));
       params.append("sort[]", "date asc");
-
       const res = await fetch(`https://archive.org/advancedsearch.php?${params}`);
       if (!res.ok) throw new Error(`archive.org search failed (${res.status})`);
       const json = await res.json();
-      const shows = groupByShow(json.response.docs || [], artist);
-      try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), shows })); } catch { /* quota */ }
-      return shows;
+      return json.response.docs || [];
+    },
+
+    // Every show, from both bands, whose setlist (the recording's description) names the song.
+    // Kept in memory only: a popular song's results are too big for localStorage.
+    _songs: new Map(),
+    searchSong(song) {
+      const k = song.toLowerCase();
+      if (!this._songs.has(k)) {
+        const p = this._searchSong(song);
+        p.catch(() => this._songs.delete(k)); // let a failed search be retried
+        this._songs.set(k, p);
+      }
+      return this._songs.get(k);
+    },
+
+    async _searchSong(song) {
+      const phrase = songPhrase(song);
+      const parts = await Promise.all(["gd", "jg"].map(async (artist) => {
+        const docs = await this._search(`${ARTISTS[artist].query} AND description:"${phrase}"`, 10000, ["description"]);
+        return groupByShow(docs.filter((d) => inSetlist(d.description, phrase)), artist)
+          .map((show) => ({ ...show, artist }));
+      }));
+      return parts.flat().sort((a, b) => a.date.localeCompare(b.date));
     },
 
     // one request gives us the songs, the taper's notes and listener reviews for a recording
@@ -250,6 +273,51 @@
     const hit = PROJECTS.find(([re]) => re.test(s)) || [null, ...DEFAULT_PROJECT];
     return { tag: hit[1], name: hit[2] };
   }
+
+  // ---------------------------------------------------------
+  // SONG SEARCH helpers
+  // ---------------------------------------------------------
+  // the part of a title to search for: "How Sweet It Is (To Be Loved by You)" -> "How Sweet It Is"
+  function songPhrase(song) {
+    const clean = (s) => s.replace(/["“”\\]/g, "").replace(/\s+/g, " ").trim();
+    return clean(song.replace(/\(.*?\)/g, " ")) || clean(song.replace(/[()]/g, " "));
+  }
+
+  // matches the title loosely: any apostrophe or none ("Truckin" / "Truckin’"), "and" or "&"
+  function songRegex(phrase, flags = "i") {
+    const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const words = phrase.split(" ").map((w) =>
+      (/^(and|&)$/i.test(w) ? "(?:and|&)" : esc(w).replace(/['’]/g, "['’]?")));
+    return new RegExp(`(?<![A-Za-z])${words.join("[\\s,]+")}(?![A-Za-z])`, flags);
+  }
+
+  // archive.org's search ignores case, so "Deal" also finds "a great deal" in the taper's notes.
+  // Setlists capitalise song titles, so only count a match that starts with a capital.
+  function inSetlist(description, phrase) {
+    const text = Array.isArray(description) ? description.join("\n") : String(description || "");
+    for (const m of text.matchAll(songRegex(phrase, "gi"))) if (!/[a-z]/.test(m[0][0])) return true;
+    return false;
+  }
+
+  // suggestions on the Songs page
+  const SONG_PICKS = [
+    "Dark Star", "Scarlet Begonias", "Fire on the Mountain", "Eyes of the World", "Morning Dew", "Help on the Way",
+    "Terrapin Station", "China Cat Sunflower", "Bertha", "Sugaree", "Deal", "Harder They Come",
+    "Midnight Moonlight", "Mission in the Rain", "Tangled Up in Blue", "Knockin' on Heaven's Door",
+  ];
+  // Garcia side-project staples for the autocomplete (the Dead's songs come from Relisten, see loadSongNames)
+  const GARCIA_SONGS = [
+    "Harder They Come", "Midnight Moonlight", "Mission in the Rain", "Run for the Roses", "Cats Under the Stars",
+    "That's What Love Will Make You Do", "My Sisters and Brothers", "Tore Up Over You", "Simple Twist of Fate",
+    "Positively 4th Street", "Señor (Tales of Yankee Power)", "Dear Prudence", "And It Stoned Me",
+    "Waiting for a Miracle", "Shining Star", "That Lucky Old Sun", "Evangeline", "Stop That Train", "Forever Young",
+    "I Shall Be Released", "Mystery Train", "Let It Rock", "Think", "Gomorrah", "Don't Let Go", "Rhapsody in Red",
+    "The Way You Do the Things You Do", "Russian Lullaby", "Catfish John", "Sitting in Limbo", "Tangled Up in Blue",
+    "How Sweet It Is (To Be Loved by You)", "Ain't No Bread in the Breadbox", "Like a Road", "Struggling Man",
+    "I Second That Emotion", "Mississippi Moon", "Reuben and Cherise", "Money Honey",
+    "Knockin' on Heaven's Door", "Lonesome and a Long Way From Home",
+    "Valerie", "Get Out of My Life Woman", "After Midnight", "The Night They Drove Old Dixie Down",
+  ];
 
   // "Jerry Garcia live at Keystone, Berkeley, CA on 1975-11-17" -> { venue: "Keystone", location: "Berkeley, CA" }
   function venueFromTitle(title) {
@@ -387,13 +455,72 @@
     return years;
   }
 
+  // the wall's tabs: one per artist, plus Songs
+  function setTab(tab, tagline) {
+    $("#wallTagline").textContent = `${tagline} · pulled live from the Internet Archive`;
+    document.querySelectorAll(".artist-switch a").forEach((link) =>
+      link.classList.toggle("active", link.dataset.artist === tab));
+    document.body.dataset.artist = tab;
+    $("#songPanel").classList.toggle("hidden", tab !== "songs");
+    $("#shelves").classList.toggle("hidden", tab === "songs");
+  }
+
+  function renderSongs() {
+    wallArtist = null;
+    setTab("songs", "Every time the Dead or Jerry played a song, oldest first");
+    const picks = $("#songPicks");
+    if (!picks.children.length) {
+      for (const s of SONG_PICKS) {
+        const a = el("a", "chip", s);
+        a.href = `#/songs/${encodeURIComponent(s)}`;
+        picks.append(a);
+      }
+    }
+    loadSongNames();
+    if (!matchMedia("(pointer: coarse)").matches) $("#songInput").focus(); // no pop-up keyboard on phones
+  }
+
+  // autocomplete: the Dead's songs from Relisten (an archive.org-based setlist catalogue) plus Garcia staples
+  let songNamesLoaded = false;
+  async function loadSongNames() {
+    if (songNamesLoaded) return;
+    songNamesLoaded = true;
+    let names = null;
+    try {
+      const c = JSON.parse(localStorage.getItem("gdvault:songnames") || "null");
+      if (c && Date.now() - c.t < 7 * CACHE_TTL_MS) names = c.v;
+    } catch { /* ignore */ }
+    if (!names) {
+      try {
+        const res = await fetch("https://api.relisten.net/api/v2/artists/grateful-dead/songs");
+        if (!res.ok) throw new Error(String(res.status));
+        names = (await res.json()).map((s) => s.name).filter(Boolean);
+        try { localStorage.setItem("gdvault:songnames", JSON.stringify({ t: Date.now(), v: names })); } catch { /* quota */ }
+      } catch {
+        names = []; // no autocomplete for the Dead's songs; typing still works
+      }
+    }
+    const seen = new Set();
+    const list = $("#songList");
+    for (const n of [...names, ...GARCIA_SONGS].sort((a, b) => a.localeCompare(b))) {
+      if (seen.has(n.toLowerCase())) continue;
+      seen.add(n.toLowerCase());
+      const o = document.createElement("option");
+      o.value = n;
+      list.append(o);
+    }
+  }
+
+  $("#songForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const song = $("#songInput").value.trim();
+    if (song) location.hash = `#/songs/${encodeURIComponent(song)}`;
+  });
+
   function renderWall(artist) {
     wallArtist = artist;
     const a = ARTISTS[artist];
-    $("#wallTagline").textContent = `${a.tagline} · pulled live from the Internet Archive`;
-    document.querySelectorAll(".artist-switch a").forEach((link) =>
-      link.classList.toggle("active", link.dataset.artist === artist));
-    document.body.dataset.artist = artist;
+    setTab(artist, a.tagline);
 
     const shelves = $("#shelves");
     shelves.innerHTML = "";
@@ -464,36 +591,61 @@
   // ---------------------------------------------------------
   // BOX (top-down view)
   // ---------------------------------------------------------
-  const boxState = { artist: null, year: null, shows: [], loading: null };
+  // A box holds either one artist's year or every performance of a song.
+  //   key   identifies what's loaded   base  hash prefix for its tapes   back  where "Back" goes
+  const boxState = { key: null, base: "", back: "", artist: null, song: null, shows: [], loading: null };
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-  async function openBox(artist, year) {
-    if (boxState.artist === artist && boxState.year === year && boxState.shows.length) return;
-    const a = ARTISTS[artist];
-    boxState.artist = artist;
-    boxState.year = year;
-    boxState.shows = [];
+  async function loadBox({ key, base, back, artist, song = null, title, loading, load, titleFor, empty }) {
+    if (boxState.key === key && boxState.shows.length) return;
+    Object.assign(boxState, { key, base, back, artist, song, shows: [] });
     document.body.dataset.artist = artist;
-    $("#boxTitle").textContent = `${a.name} · ${year}`;
+    $("#boxTitle").textContent = title;
+    $("#backToWall").textContent = song ? "← Back to songs" : "← Back to the wall";
     $("#boxFilter").value = "";
     $("#tapes").innerHTML = "";
-    setBoxStatus("Digging through the box…");
+    setBoxStatus(loading);
 
-    const thisLoad = (boxState.loading = api.searchYear(artist, year));
+    const thisLoad = (boxState.loading = load());
     try {
       const shows = await thisLoad;
       if (boxState.loading !== thisLoad) return; // user moved on
       boxState.shows = shows;
       const recs = shows.reduce((n, s) => n + s.recordings.length, 0);
-      $("#boxTitle").textContent =
-        `${a.name} · ${year} — ${shows.length} show${shows.length === 1 ? "" : "s"}, ${recs} tape${recs === 1 ? "" : "s"}`;
-      if (!shows.length) setBoxStatus("This box is empty. No recordings from this year in the archive.");
-      else setBoxStatus("");
+      $("#boxTitle").textContent = titleFor(shows, recs);
+      setBoxStatus(shows.length ? "" : empty);
       renderTapes();
     } catch (err) {
       if (boxState.loading !== thisLoad) return;
-      boxState.year = null;
+      boxState.key = null; // so "Try again" reloads
       setBoxStatus(`Couldn't reach archive.org: ${err.message}`, true);
     }
+  }
+
+  function openBox(artist, year) {
+    const a = ARTISTS[artist];
+    return loadBox({
+      key: `${artist}/${year}`, base: `${artist}/${year}`, back: `#/${artist}`, artist,
+      title: `${a.name} · ${year}`,
+      loading: "Digging through the box…",
+      load: () => api.searchYear(artist, year),
+      titleFor: (shows, recs) => `${a.name} · ${year} — ${plural(shows.length, "show")}, ${plural(recs, "tape")}`,
+      empty: "This box is empty. No recordings from this year in the archive.",
+    });
+  }
+
+  function openSongBox(song) {
+    return loadBox({
+      key: `songs/${song.toLowerCase()}`, base: `songs/${encodeURIComponent(song)}`, back: "#/songs",
+      artist: "songs", song,
+      title: `“${song}”`,
+      loading: "Flipping through every setlist…",
+      load: () => api.searchSong(song),
+      titleFor: (shows) => shows.length
+        ? `“${song}” — ${plural(shows.length, "show")}, ${shows[0].date.slice(0, 4)}–${shows[shows.length - 1].date.slice(0, 4)}`
+        : `“${song}”`,
+      empty: `No setlists mention “${song}”. Check the spelling, or try a shorter part of the title.`,
+    });
   }
 
   function setBoxStatus(msg, withRetry) {
@@ -519,8 +671,8 @@
     const q = $("#boxFilter").value.trim().toLowerCase();
     const wrap = $("#tapes");
     wrap.innerHTML = "";
-    const year = boxState.year, artist = boxState.artist;
-    let shown = 0, i = 0;
+    const artist = boxState.artist;
+    let shown = 0, i = 0, lastYear = null;
 
     // one cassette per show, showing its most-played recording; the others are in the player's dropdown
     for (const show of boxState.shows) {
@@ -537,6 +689,11 @@
       if (!rec) continue;
       const n = show.recordings.length;
       shown++;
+      // a song's results span many years: label where each year starts
+      if (boxState.song && show.date.slice(0, 4) !== lastYear) {
+        lastYear = show.date.slice(0, 4);
+        wrap.append(el("div", "tape-year", lastYear));
+      }
       const r = hash(rec.id);
       const b = el("button", "tape-case");
       b.style.setProperty("--c", color);
@@ -568,7 +725,7 @@
         rec.rating ? `★ ${rec.rating.toFixed(1)}` : "", `${rec.downloads.toLocaleString()} plays`,
         n > 1 ? `${n} versions — pick another in the player` : ""].filter(Boolean).join("\n");
       b.addEventListener("click", () => {
-        location.hash = `#/${artist}/${year}/${show.date}/${encodeURIComponent(rec.id)}`;
+        location.hash = `#/${boxState.base}/${show.date}/${encodeURIComponent(rec.id)}`;
       });
       wrap.append(b);
     }
@@ -589,6 +746,7 @@
     total: 0,
     index: 0,
     loadToken: 0,
+    cue: null, // regex for the song to start on, when opened from a song search
     gapless: false, // this tape streams through `gapless` (see gapless.js) rather than one file at a time
   };
   const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -682,7 +840,9 @@
       if (player.gapless) gapless.load(tracks);
       renderTrackList();
       $("#cassette").classList.remove("empty");
-      loadTrack(0, false);
+      // opened from a song search: wind the tape to that song
+      const cueAt = player.cue ? tracks.findIndex((t) => player.cue.test(t.title)) : -1;
+      loadTrack(Math.max(cueAt, 0), false);
       lcd(undefined, undefined, "PRESS PLAY ▶");
     } catch (err) {
       if (token !== player.loadToken) return;
@@ -1091,7 +1251,7 @@
       else if (e.key === "ArrowLeft") prev();
       else if (e.key === "Escape") eject();
     } else if (e.key === "Escape" && !$("#boxview").classList.contains("hidden")) {
-      location.hash = `#/${boxState.artist || DEFAULT_ARTIST}`;
+      location.hash = boxState.back || `#/${DEFAULT_ARTIST}`;
     }
   });
 
@@ -1126,46 +1286,77 @@
       location.replace(`#/${DEFAULT_ARTIST}/${parts.join("/")}`);
       return;
     }
-    if (!ARTISTS[parts[0]]) {
+    const isTab = (t) => t === "songs" || !!ARTISTS[t];
+    if (!isTab(parts[0])) {
       let saved = null;
       try { saved = localStorage.getItem("gdvault:artist"); } catch { /* ignore */ }
-      location.replace(`#/${ARTISTS[saved] ? saved : DEFAULT_ARTIST}`);
+      location.replace(`#/${isTab(saved) ? saved : DEFAULT_ARTIST}`);
       return;
     }
+    try { localStorage.setItem("gdvault:artist", parts[0]); } catch { /* ignore */ }
 
-    const [artist, yearStr, date, recId] = parts;
-    const a = ARTISTS[artist];
-    try { localStorage.setItem("gdvault:artist", artist); } catch { /* ignore */ }
-    const year = parseInt(yearStr, 10);
-
-    if (!year || year < a.first || year > a.last) {
+    const showWall = () => {
       if (player.show) closePlayer();
       $("#boxview").classList.add("hidden");
       $("#wall").classList.remove("hidden");
-      renderWall(artist);
-      trackView(`/${artist}`, `${a.name} — all years`, { artist: a.name });
-      return;
+    };
+    const showBox = () => {
+      $("#wall").classList.add("hidden");
+      $("#boxview").classList.remove("hidden");
+    };
+    const decode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
+
+    let date, recId, path, label, boxTitle, extra;
+    if (parts[0] === "songs") {
+      // #/songs   #/songs/<song>   #/songs/<song>/<date>/<identifier>
+      const song = parts[1] ? decode(parts[1]).trim() : "";
+      if (!song) {
+        showWall();
+        renderSongs();
+        trackView("/songs", "Songs");
+        return;
+      }
+      [, , date, recId] = parts;
+      showBox();
+      await openSongBox(song);
+      path = `/songs/${encodeURIComponent(song)}`;
+      label = boxTitle = `“${song}”`;
+      extra = { song };
+    } else {
+      const [artist, yearStr] = parts;
+      [, , date, recId] = parts;
+      const a = ARTISTS[artist];
+      const year = parseInt(yearStr, 10);
+      if (!year || year < a.first || year > a.last) {
+        showWall();
+        renderWall(artist);
+        trackView(`/${artist}`, `${a.name} — all years`, { artist: a.name });
+        return;
+      }
+      showBox();
+      await openBox(artist, year);
+      path = `/${artist}/${year}`;
+      label = a.name;
+      boxTitle = `${a.name} · ${year}`;
+      extra = { artist: a.name, year: String(year) };
     }
 
-    $("#wall").classList.add("hidden");
-    $("#boxview").classList.remove("hidden");
-    await openBox(artist, year);
-
-    // the combined box can hold a GD and a JG show on the same date; the recording id tells them apart
-    const id = recId && decodeURIComponent(recId);
+    // a combined or song box can hold a GD and a JG show on the same date; the recording id tells them apart
+    const id = recId && decode(recId);
     const onDate = date ? boxState.shows.filter((s) => s.date === date) : [];
     const show = onDate.find((s) => s.recordings.some((r) => r.id === id)) || onDate[0];
     if (show) {
-      openPlayer(artist, show, id);
-      trackView(`/${artist}/${year}/${date}`, `${a.name} · ${date}${show.venue ? ` · ${show.venue}` : ""}`,
-        { artist: a.name, year: String(year), show_date: date });
+      player.cue = boxState.song ? songRegex(songPhrase(boxState.song)) : null;
+      openPlayer(show.artist || parts[0], show, id);
+      trackView(`${path}/${date}`, `${label} · ${date}${show.venue ? ` · ${show.venue}` : ""}`,
+        { ...extra, show_date: date });
     } else {
       if (!date && !$("#player").classList.contains("hidden")) closePlayer();
-      trackView(`/${artist}/${year}`, `${a.name} · ${year}`, { artist: a.name, year: String(year) });
+      trackView(path, boxTitle, extra);
     }
   }
 
-  $("#backToWall").addEventListener("click", () => { location.hash = `#/${boxState.artist || DEFAULT_ARTIST}`; });
+  $("#backToWall").addEventListener("click", () => { location.hash = boxState.back || `#/${DEFAULT_ARTIST}`; });
   $("#boxFilter").addEventListener("input", renderTapes);
   window.addEventListener("hashchange", route);
   route();

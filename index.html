@@ -47,11 +47,32 @@
         <nav class="artist-switch" aria-label="Choose artist">
           <a href="#/gd" data-artist="gd">Grateful Dead</a
           ><a href="#/jg" data-artist="jg">Jerry Garcia</a
-          ><a href="#/all" data-artist="all">Both</a>
+          ><a href="#/all" data-artist="all">Both</a
+          ><a href="#/songs" data-artist="songs">Songs</a>
         </nav>
         <p id="wallTagline"></p>
       </header>
       <div id="shelves" class="shelves"></div>
+      <div id="songPanel" class="song-panel hidden">
+        <form id="songForm" class="song-form" role="search">
+          <input
+            id="songInput"
+            type="search"
+            list="songList"
+            placeholder="Song title, e.g. Scarlet Begonias"
+            aria-label="Song title"
+            autocomplete="off"
+          />
+          <button class="chip" type="submit">Find the tapes</button>
+          <datalist id="songList"></datalist>
+        </form>
+        <h3>Or pull one of these</h3>
+        <div id="songPicks" class="song-picks"></div>
+        <p class="song-note">
+          Found by searching each recording’s setlist on archive.org, so a
+          tape with no setlist in its notes won’t show up.
+        </p>
+      </div>
       <footer class="wall-footer">
         Recordings courtesy of the Internet Archive’s
         <a
