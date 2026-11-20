@@ -25,6 +25,16 @@
       last: 1995,
       tagline: "Jerry Garcia Band, Legion of Mary, Reconstruction & friends, 1970–1995",
     },
+    // both of the above on one wall; built from their results, so it has no query of its own
+    all: {
+      key: "all",
+      name: "Grateful Dead & Jerry Garcia",
+      short: "GD+JG",
+      sources: ["gd", "jg"],
+      first: 1965,
+      last: 1995,
+      tagline: "The Grateful Dead and Garcia's side projects together, 1965–1995",
+    },
   };
   const DEFAULT_ARTIST = "gd";
 
@@ -83,6 +93,16 @@
     },
 
     async _searchYear(artist, year) {
+      // combined artist: merge each source's year (each uses its own cache), tagging shows with their band
+      const sources = ARTISTS[artist].sources;
+      if (sources) {
+        const parts = await Promise.all(sources
+          .filter((s) => year >= ARTISTS[s].first && year <= ARTISTS[s].last)
+          .map(async (s) => (await this.searchYear(s, year)).map((show) => ({ ...show, artist: s }))));
+        // stable sort keeps source order (GD before JG) for a shared date
+        return parts.flat().sort((a, b) => a.date.localeCompare(b.date));
+      }
+
       const key = cacheKey(artist, year);
       try {
         const cached = JSON.parse(localStorage.getItem(key) || "null");
@@ -344,6 +364,17 @@
   let wallArtist = null;
 
   function cachedCount(artist, year) {
+    const sources = ARTISTS[artist].sources;
+    if (sources) {
+      let total = 0;
+      for (const s of sources) {
+        if (year < ARTISTS[s].first || year > ARTISTS[s].last) continue;
+        const n = cachedCount(s, year);
+        if (n == null) return null;
+        total += n;
+      }
+      return total;
+    }
     try {
       const c = JSON.parse(localStorage.getItem(cacheKey(artist, year)) || "null");
       return c && Date.now() - c.t < CACHE_TTL_MS ? c.shows.length : null;
@@ -495,7 +526,8 @@
     for (const show of boxState.shows) {
       const color = SPINE_COLORS[Math.floor(hash(show.date) * 1000) % SPINE_COLORS.length];
       const venue = [show.venue, show.location].filter(Boolean).join(" · ") || "Unknown venue";
-      const showText = `${show.date} ${fmtDate(show.date)} ${show.venue} ${show.location}`.toLowerCase();
+      const band = ARTISTS[show.artist || artist].name;
+      const showText = `${show.date} ${fmtDate(show.date)} ${show.venue} ${show.location} ${band}`.toLowerCase();
       const recText = (r) => `${r.project ? ` ${r.project.tag} ${r.project.name}` : ""} ${r.id}`.toLowerCase();
 
       // if the filter matches a particular recording (e.g. "sbd"), the tape shows the best matching one
@@ -521,7 +553,7 @@
       const head = el("div", "t-head");
       head.append(
         el("span", "t-date", fmtDate(show.date)),
-        el("span", "t-band", rec.project ? rec.project.name : ARTISTS[artist].name),
+        el("span", "t-band", rec.project ? rec.project.name : band),
         badges,
       );
       const spine = el("div", "spine");
@@ -598,6 +630,7 @@
   }
 
   async function openPlayer(artist, show, recId) {
+    artist = show.artist || artist; // shows in the combined box carry their own band
     $("#player").classList.remove("hidden");
     const rec = show.recordings.find((r) => r.id === recId) || show.recordings[0];
     if (player.rec && player.rec.id === rec.id) return; // already loaded
@@ -1118,9 +1151,12 @@
     $("#boxview").classList.remove("hidden");
     await openBox(artist, year);
 
-    const show = date && boxState.shows.find((s) => s.date === date);
+    // the combined box can hold a GD and a JG show on the same date; the recording id tells them apart
+    const id = recId && decodeURIComponent(recId);
+    const onDate = date ? boxState.shows.filter((s) => s.date === date) : [];
+    const show = onDate.find((s) => s.recordings.some((r) => r.id === id)) || onDate[0];
     if (show) {
-      openPlayer(artist, show, recId && decodeURIComponent(recId));
+      openPlayer(artist, show, id);
       trackView(`/${artist}/${year}/${date}`, `${a.name} · ${date}${show.venue ? ` · ${show.venue}` : ""}`,
         { artist: a.name, year: String(year), show_date: date });
     } else {
