@@ -449,21 +449,24 @@ button { font: inherit; cursor: pointer; }
   display: flex; flex-direction: column;
   color: #1d1712;
 }
-.cass-label-top { display: flex; align-items: center; gap: 2.2cqw; }
-.cass-label .side {
-  font-family: "Permanent Marker", cursive; font-size: 6.4cqw;
-  background: #1d1712; color: #f6efda; width: 1.6em; text-align: center; border-radius: 3px;
-}
-.cass-date { font-weight: 700; font-size: 5.6cqw; flex: 1; }
-.cass-brand { font-family: "VT323", monospace; font-size: 4.8cqw; }
-.cass-venue {
-  font-size: 4.4cqw; line-height: 1.1; min-height: 1.1em;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  /* stripe rides directly under the venue text, spanning the label's full width */
-  margin: .3cqw calc(-1 * var(--label-px)) .8cqw;
-  padding: 0 var(--label-px) 2.5cqw;
+/* date + venue share one strip of tape; the red/yellow stripe runs under the whole row,
+   spanning the label's full width */
+.cass-label-top {
+  display: flex; align-items: center; gap: 2.2cqw;
+  margin: 0 calc(-1 * var(--label-px)) .8cqw;
+  padding: .3cqw var(--label-px) 2.5cqw;
   background: linear-gradient(to top, #f2b134 0 1.1cqw, #e8573a 1.1cqw 2.2cqw, transparent 2.2cqw);
 }
+.cass-title { flex: 1; min-width: 0; font-size: 4.4cqw; --tilt: -1deg; }
+.cass-title .label-tape:has(.cass-date:empty) { display: none; }
+.cass-label .side {
+  font-family: "Permanent Marker", cursive; font-size: 6.4cqw; line-height: 1.2; flex: none;
+  background: #1d1712; color: #f6efda; width: 1.6em; text-align: center; border-radius: 3px;
+}
+.cass-date { font-weight: 700; font-size: 5.6cqw; line-height: 1.1; }
+.cass-venue { font-size: 4.4cqw; line-height: 1.1; }
+.cass-date, .cass-venue { overflow: hidden; text-overflow: ellipsis; }
+.cass-brand { font-family: "VT323", monospace; font-size: 4.8cqw; }
 .cass-window {
   /* don't stretch to the label's bottom edge: sit just under the stripe so the reels
      land at the shell's vertical centre (the spare label space goes below instead) */
@@ -480,6 +483,42 @@ button { font: inherit; cursor: pointer; }
   position: relative;
   box-shadow: inset 0 2px 6px rgba(0,0,0,.9);
   --reel: clamp(52px, 20cqw, 92px);
+}
+/* band name, hand-lettered in the spare label space under the reels
+   (flex: 1 takes over the window's auto bottom margin, so the reels don't move) */
+/* "A" side badge at the label's far left; the band name's tape stays centred
+   (the empty third column balances the badge's) */
+.cass-band {
+  flex: 1; min-height: 0;
+  display: grid; grid-template-columns: 1fr minmax(0, max-content) 1fr;
+  align-items: center; column-gap: 2.2cqw;
+  font-family: "Permanent Marker", cursive; font-size: 4.8cqw; line-height: 1;
+  white-space: nowrap; letter-spacing: .02em; --tilt: -.8deg;
+}
+.cass-band .side { justify-self: start; }
+.cass-band .label-tape { min-width: 0; }
+/* a strip of white tape stuck on the label and written on: each line of text sits
+   on its own piece, slightly askew, with torn ends (zigzag clip on the ::before) */
+.label-tape {
+  position: relative; isolation: isolate;
+  display: inline-block; max-width: 100%; vertical-align: middle;
+  padding: .08em .7em .12em;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  color: #111;
+  transform: rotate(var(--tilt, 0deg));
+  filter: drop-shadow(0 .5px .6px rgba(0,0,0,.35));
+}
+.label-tape:empty { display: none; }
+.label-tape::before {
+  content: ""; position: absolute; inset: 0 0 1px; z-index: -1;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.025) 0 1px, transparent 1px 3px),
+    linear-gradient(#fdfdfb, #f3f2ee);
+  clip-path: polygon(
+    0 0, 100% 0,
+    calc(100% - 3px) 12%, 100% 25%, calc(100% - 2px) 38%, 100% 50%, calc(100% - 3px) 63%, 100% 76%, calc(100% - 2px) 88%, 100% 100%,
+    0 100%,
+    3px 88%, 0 76%, 2px 63%, 0 50%, 3px 38%, 0 25%, 2px 12%);
 }
 .window-glass {
   position: absolute; left: 35.5%; right: 35.5%; top: 27%; bottom: 27%;

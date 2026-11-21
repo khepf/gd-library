@@ -809,6 +809,7 @@
     $("#cassDate").textContent = fmtDate(show.date);
     $("#cassBrand").textContent = rec.project ? rec.project.tag : "C-90";
     $("#cassVenue").textContent = where.join(", ");
+    $("#cassBand").textContent = rec.project ? rec.project.name : ARTISTS[artist].name;
     $("#jDate").textContent = fmtLongDate(show.date);
     $("#jVenue").textContent = (rec.project ? `${rec.project.name} — ` : "") + (where.join(" — ") || "Unknown venue");
     $("#archiveLink").href = `https://archive.org/details/${rec.id}`;
