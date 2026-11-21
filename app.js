@@ -72,16 +72,61 @@
 
   // Psychedelic cassette-label art: a stack of CSS gradients (tie-dye spirals, rings,
   // sunbursts, blobs, waves), seeded by the show so each one always gets the same label.
-  function labelArt(seed) {
-    // mulberry32, seeded from the show (hashing seed+counter gives correlated values)
+  // mulberry32: a stream of pseudo-random numbers from a string
+  // (hashing seed+counter instead gives correlated values)
+  function seededRandom(seed) {
     let s = Math.floor(hash(seed) * 4294967295) >>> 0;
-    const rnd = () => {
+    return () => {
       s = (s + 0x6D2B79F5) >>> 0;
       let t = s;
       t = Math.imul(t ^ (t >>> 15), t | 1);
       t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
+  }
+
+  // how worn each tape looks: overall age, and where its stains landed (CSS custom props)
+  function labelWear(seed) {
+    const rnd = seededRandom(`${seed}|wear`);
+    const pct = () => `${Math.round(10 + rnd() * 80)}%`;
+    return {
+      "--scratches": shellScratches(rnd),
+      "--age": (0.55 + rnd() * 0.45).toFixed(2),
+      "--stain1": `${pct()} ${pct()}`,
+      "--stain2": `${pct()} ${pct()}`,
+      "--stain-size": `${Math.round(14 + rnd() * 18)}%`,
+    };
+  }
+
+  // Scratches on the plastic shell, as an SVG data URL: mostly short, slightly curved
+  // marks running along a couple of "handling" directions, a few long faint ones, and
+  // cloudy rubbed patches. Irregular on purpose, so it never reads as a pattern.
+  function shellScratches(rnd) {
+    const W = 440, H = 275;
+    const dirs = [rnd() * 180, rnd() * 180];
+    const paths = [];
+    const count = 18 + Math.floor(rnd() * 16);
+    for (let i = 0; i < count; i++) {
+      const long = rnd() < 0.15;
+      const len = long ? 70 + rnd() * 160 : 5 + rnd() * rnd() * 55; // skewed toward short nicks
+      const deg = (rnd() < 0.75 ? dirs[Math.floor(rnd() * 2)] + (rnd() - 0.5) * 24 : rnd() * 180) * Math.PI / 180;
+      const x = rnd() * W, y = rnd() * H;
+      const dx = Math.cos(deg) * len / 2, dy = Math.sin(deg) * len / 2;
+      const bend = (rnd() - 0.5) * len * 0.15; // slight arc
+      const cx = x - Math.sin(deg) * bend, cy = y + Math.cos(deg) * bend;
+      const op = long ? 0.05 + rnd() * 0.06 : 0.07 + rnd() * 0.13;
+      paths.push(`<path d="M${(x - dx).toFixed(1)} ${(y - dy).toFixed(1)}Q${cx.toFixed(1)} ${cy.toFixed(1)} ${(x + dx).toFixed(1)} ${(y + dy).toFixed(1)}" stroke-opacity="${op.toFixed(2)}" stroke-width="${(0.4 + rnd() * 0.7).toFixed(2)}"/>`);
+    }
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">` +
+      `<filter id="r"><feTurbulence type="fractalNoise" baseFrequency=".012 .02" numOctaves="3" seed="${Math.floor(rnd() * 999)}"/>` +
+      `<feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .3 -.15"/></filter>` +
+      `<rect width="100%" height="100%" filter="url(#r)"/>` +
+      `<g fill="none" stroke="#fff" stroke-linecap="round">${paths.join("")}</g></svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+  }
+
+  function labelArt(seed) {
+    const rnd = seededRandom(seed);
     const pick = (a) => a[Math.floor(rnd() * a.length)];
     const between = (lo, hi) => lo + rnd() * (hi - lo);
     const pos = () => `${Math.round(between(10, 90))}% ${Math.round(between(10, 90))}%`;
@@ -864,7 +909,10 @@
     $("#brandYear").textContent = show.date.slice(0, 4);
     $("#cassDate").textContent = fmtDate(show.date);
     $("#cassVenue").textContent = where.join(", ");
-    $(".cass-label").style.background = labelArt(`${artist}|${show.date}`);
+    const label = $(".cass-label");
+    label.style.background = labelArt(`${artist}|${show.date}`);
+    // on the cassette (not just the label) so the shell can use the scratches; the label inherits the rest
+    for (const [k, v] of Object.entries(labelWear(`${artist}|${show.date}`))) $("#cassette").style.setProperty(k, v);
     $("#cassBand").textContent = rec.project ? rec.project.name : ARTISTS[artist].name;
     $("#jDate").textContent = fmtLongDate(show.date);
     $("#jVenue").textContent = (rec.project ? `${rec.project.name} — ` : "") + (where.join(" — ") || "Unknown venue");

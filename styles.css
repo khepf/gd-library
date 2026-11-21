@@ -440,6 +440,7 @@ button { font: inherit; cursor: pointer; }
 .cassette.empty .cass-label { opacity: .25; }
 .cass-label {
   flex: 1;
+  position: relative;
   border-radius: 6px;
   background: #f6efda;
   /* label text & spacing scale with the cassette (cqw), so the layout keeps the same
@@ -451,6 +452,39 @@ button { font: inherit; cursor: pointer; }
 }
 /* date + venue share one strip of tape; the red/yellow stripe runs under the whole row,
    spanning the label's full width */
+/* ---- aging: decades in a shoebox. Two overlays sit on top of the label (art, tape and
+   ink alike): ::before fades the colours, ::after adds yellowing, grimy edges, grain and
+   a couple of stains. --age (0–1) and the stain spots are set per show by labelWear() in app.js */
+.cass-label::before, .cass-label::after {
+  content: ""; position: absolute; inset: 0; z-index: 2;
+  border-radius: inherit; pointer-events: none;
+}
+.cass-label::before { /* sun-faded: pull some saturation out of everything */
+  background: hsl(40 25% 55%);
+  mix-blend-mode: saturation;
+  opacity: calc(var(--age, .7) * .45);
+}
+.cass-label::after {
+  mix-blend-mode: multiply;
+  opacity: var(--age, .7);
+  background:
+    /* coffee / water stains: a soft blot with a darker tide-line ring */
+    radial-gradient(circle at var(--stain1, 80% 70%), rgba(150, 100, 40, .16) 0 calc(var(--stain-size, 20%) * .8),
+      rgba(120, 75, 25, .32) calc(var(--stain-size, 20%) * .8) var(--stain-size, 20%), transparent calc(var(--stain-size, 20%) + 1%)),
+    radial-gradient(circle at var(--stain2, 15% 30%), rgba(150, 105, 45, .14), transparent calc(var(--stain-size, 20%) * .7)),
+    /* grain and speckle */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .32 0 0 0 0 .2 0 0 0 1.6 -.7'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    /* grime worked into the edges and corners from handling */
+    radial-gradient(ellipse 75% 70% at 50% 50%, transparent 60%, rgba(110, 75, 35, .45)),
+    /* overall yellowing */
+    linear-gradient(rgba(225, 190, 120, .35), rgba(205, 165, 95, .4));
+}
+/* the plastic shell: scratches and rubbed patches, generated per show (shellScratches()
+   in app.js); painted beneath the label */
+.cassette::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: var(--scratches, none) center / 100% 100% no-repeat;
+}
 .cass-label-top {
   display: flex; align-items: center; gap: 2.2cqw;
   margin: 0 calc(-1 * var(--label-px)) .8cqw;
@@ -513,7 +547,9 @@ button { font: inherit; cursor: pointer; }
   content: ""; position: absolute; inset: 0 0 1px; z-index: -1;
   background:
     repeating-linear-gradient(90deg, rgba(0,0,0,.025) 0 1px, transparent 1px 3px),
-    linear-gradient(#fdfdfb, #f3f2ee);
+    /* old tape: yellowed, dingier toward the torn ends where fingers pressed it down */
+    linear-gradient(90deg, rgba(160, 120, 60, .22), transparent 12% 88%, rgba(160, 120, 60, .22)),
+    linear-gradient(#f8f3e3, #ebe2c8);
   clip-path: polygon(
     0 0, 100% 0,
     calc(100% - 3px) 12%, 100% 25%, calc(100% - 2px) 38%, 100% 50%, calc(100% - 3px) 63%, 100% 76%, calc(100% - 2px) 88%, 100% 100%,
