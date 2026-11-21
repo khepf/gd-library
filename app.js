@@ -70,6 +70,62 @@
     return (h >>> 0) / 4294967295;
   }
 
+  // Psychedelic cassette-label art: a stack of CSS gradients (tie-dye spirals, rings,
+  // sunbursts, blobs, waves), seeded by the show so each one always gets the same label.
+  function labelArt(seed) {
+    // mulberry32, seeded from the show (hashing seed+counter gives correlated values)
+    let s = Math.floor(hash(seed) * 4294967295) >>> 0;
+    const rnd = () => {
+      s = (s + 0x6D2B79F5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const pick = (a) => a[Math.floor(rnd() * a.length)];
+    const between = (lo, hi) => lo + rnd() * (hi - lo);
+    const pos = () => `${Math.round(between(10, 90))}% ${Math.round(between(10, 90))}%`;
+
+    // palette: a few vivid hues spread around the wheel by a random scheme
+    const base = rnd() * 360;
+    const step = pick([25, 40, 72, 120, 150, 180]);
+    const count = 3 + Math.floor(rnd() * 3);
+    const hues = Array.from({ length: count }, (_, i) => (base + i * step + between(-12, 12)) % 360);
+    const col = (i, a = 1) => {
+      const h = hues[((i % count) + count) % count];
+      return `hsl(${Math.round(h)} ${Math.round(between(85, 100))}% ${Math.round(between(48, 62))}% / ${a})`;
+    };
+    const cycle = (fn, reps) => Array.from({ length: count * reps }, (_, i) => fn(i)).join(", ");
+
+    const patterns = {
+      spiral: () => { // tie-dye swirl
+        const reps = 1 + Math.floor(rnd() * 3);
+        return `conic-gradient(from ${Math.round(rnd() * 360)}deg at ${pos()}, ${cycle((i) => col(i), reps)}, ${col(0)})`;
+      },
+      rings: () => {
+        const w = between(4, 12);
+        return `repeating-radial-gradient(circle at ${pos()}, ${cycle((i) => `${col(i)} ${(i * w).toFixed(1)}px ${((i + 1) * w).toFixed(1)}px`, 1)})`;
+      },
+      sunburst: () => {
+        const d = between(6, 15);
+        return `repeating-conic-gradient(from ${Math.round(rnd() * 360)}deg at ${pos()}, ${cycle((i) => `${col(i)} ${(i * d).toFixed(1)}deg ${((i + 1) * d).toFixed(1)}deg`, 1)})`;
+      },
+      waves: () => {
+        const w = between(8, 22);
+        return `repeating-linear-gradient(${Math.round(rnd() * 180)}deg, ${cycle((i) => `${col(i)} ${(i * w).toFixed(1)}px`, 1)}, ${col(0)} ${(count * w).toFixed(1)}px)`;
+      },
+    };
+    const blob = () => `radial-gradient(circle at ${pos()}, ${col(Math.floor(rnd() * count), .9)} 0, ${col(Math.floor(rnd() * count), 0)} ${Math.round(between(25, 55))}%)`;
+    const soft = () => `conic-gradient(from ${Math.round(rnd() * 360)}deg at ${pos()}, ${cycle((i) => col(i, .45), 1)}, ${col(0, .45)})`;
+
+    // a base pattern, overlaid with a translucent swirl and a few glowing blobs
+    const layers = [];
+    for (let i = Math.floor(between(1, 4)); i > 0; i--) layers.push(blob());
+    if (rnd() < .6) layers.push(soft());
+    layers.push(patterns[pick(Object.keys(patterns))]());
+    return layers.join(", ");
+  }
+
   // drop caches written by older versions of the app (before artists were added)
   try {
     Object.keys(localStorage).filter((k) => k.startsWith("gdvault:year:")).forEach((k) => localStorage.removeItem(k));
@@ -807,8 +863,8 @@
     $("#brandArtist").textContent = ARTISTS[artist].short;
     $("#brandYear").textContent = show.date.slice(0, 4);
     $("#cassDate").textContent = fmtDate(show.date);
-    $("#cassBrand").textContent = rec.project ? rec.project.tag : "C-90";
     $("#cassVenue").textContent = where.join(", ");
+    $(".cass-label").style.background = labelArt(`${artist}|${show.date}`);
     $("#cassBand").textContent = rec.project ? rec.project.name : ARTISTS[artist].name;
     $("#jDate").textContent = fmtLongDate(show.date);
     $("#jVenue").textContent = (rec.project ? `${rec.project.name} — ` : "") + (where.join(" — ") || "Unknown venue");

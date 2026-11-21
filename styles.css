@@ -459,6 +459,7 @@ button { font: inherit; cursor: pointer; }
 }
 .cass-title { flex: 1; min-width: 0; font-size: 4.4cqw; --tilt: -1deg; }
 .cass-title .label-tape:has(.cass-date:empty) { display: none; }
+.cass-title .label-tape { min-width: 78%; padding-right: 1.6em; } /* a longer strip than the text needs, like real tape torn off generously */
 .cass-label .side {
   font-family: "Permanent Marker", cursive; font-size: 6.4cqw; line-height: 1.2; flex: none;
   background: #1d1712; color: #f6efda; width: 1.6em; text-align: center; border-radius: 3px;
@@ -466,7 +467,6 @@ button { font: inherit; cursor: pointer; }
 .cass-date { font-weight: 700; font-size: 5.6cqw; line-height: 1.1; }
 .cass-venue { font-size: 4.4cqw; line-height: 1.1; }
 .cass-date, .cass-venue { overflow: hidden; text-overflow: ellipsis; }
-.cass-brand { font-family: "VT323", monospace; font-size: 4.8cqw; }
 .cass-window {
   /* don't stretch to the label's bottom edge: sit just under the stripe so the reels
      land at the shell's vertical centre (the spare label space goes below instead) */
